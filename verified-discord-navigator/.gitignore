@@ -1,0 +1,8 @@
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+debug_*.py
+test_read_channel.py
+test_laptop_query.py
+flow_diagram.mmd
