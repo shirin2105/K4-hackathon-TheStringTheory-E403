@@ -17,10 +17,10 @@ class NavigatorCommands(commands.Cog):
 
     async def get_all_sources(self):
         """
-        Retrieves live messages from official announcement channel 1532306560871567390
+        Retrieves live messages from official announcement channel 1527920171963125953
         combined with course documents database.
         """
-        ann_channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID", "1532306560871567390").strip()
+        ann_channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID", "1527920171963125953").strip()
         live_messages = []
         if ann_channel_id:
             live_messages = await self.engine.retriever.fetch_live_messages_async(self.bot, ann_channel_id)
@@ -59,73 +59,21 @@ class NavigatorCommands(commands.Cog):
         try:
             await interaction.followup.send(embed=embed, view=view)
         except Exception:
-            if not interaction.response.is_done():
-                await interaction.response.send_message(embed=embed, view=view)
-
-    @app_commands.command(name="sources", description="Xem toàn bộ nguồn và điểm số đánh giá liên quan.")
-    @app_commands.describe(question="Nội dung câu hỏi để rà soát nguồn")
-    async def sources_command(self, interaction: discord.Interaction, question: str):
-        if not interaction.response.is_done():
             try:
-                await interaction.response.defer(ephemeral=True)
+                await interaction.channel.send(embed=embed, view=view)
             except Exception:
                 pass
 
-        all_messages = await self.get_all_sources()
-        result = self.engine.process_query(question=question, messages=all_messages)
-        if not result.candidate_sources:
-            await interaction.followup.send("Không tìm thấy nguồn nào liên quan.", ephemeral=True)
-            return
+    @app_commands.command(name="status", description="Xem trạng thái hệ thống xác minh và độ tin cậy.")
+    async def status_command(self, interaction: discord.Interaction):
+        embed = discord.Embed(
+            title="🛡️ Trạng Thái Hệ Thống Verified Discord Navigator",
+            color=0x10b981
+        )
+        embed.add_field(name="Động cơ Scoring", value="8-Factor DecisionEngine", inline=True)
+        embed.add_field(name="Ngưỡng Tin Cậy (Gate)", value="≥ 60.0 Score", inline=True)
+        embed.add_field(name="Mẫu Giám Sát", value="Top 5 Candidates", inline=True)
+        embed.add_field(name="Kênh Thông Báo Live", value="<#1527920171963125953>", inline=False)
+        embed.set_footer(text="Verified Discord Navigator • AI20K Build Phase")
 
-        lines = [f"📊 **Báo cáo nguồn cho:** *\"{question}\"*"]
-        lines.append(f"• Intent: `{result.verification_details.get('query_params', {}).get('intent')}`")
-        lines.append(f"• Cohort: `{result.verification_details.get('query_params', {}).get('cohort')}`")
-        lines.append(f"• Trạng thái xử lý: `{result.status.value}`\n")
-
-        lines.append("**Danh sách nguồn candidate:**")
-        for idx, src in enumerate(result.candidate_sources, 1):
-            src_label = f"#{src.channel_name}" if not src.id.startswith("doc_") else src.channel_name
-            url_str = f" - [Link]({src.message_url})" if src.message_url else ""
-            lines.append(
-                f"{idx}. **[{src.id}]** {src_label} (Cohort: {src.cohort}, Status: {src.status}){url_str}\n"
-                f"   \"{src.content}\""
-            )
-
-        await interaction.followup.send("\n".join(lines), ephemeral=True)
-
-    @app_commands.command(name="demo", description="Chạy thử 3 case demo bắt buộc của hackathon.")
-    @app_commands.describe(case="Chọn case demo")
-    async def demo_command(
-        self,
-        interaction: discord.Interaction,
-        case: Literal["verified", "conflict", "insufficient"]
-    ):
-        if not interaction.response.is_done():
-            try:
-                await interaction.response.defer()
-            except Exception:
-                pass
-
-        demo_questions = {
-            "verified": "Workshop tối nay lúc mấy giờ?",
-            "conflict": "Khóa 4 nộp Gate 1 khi nào?",
-            "insufficient": "Tuần sau có workshop đặc biệt không?"
-        }
-
-        question = demo_questions[case]
-        all_messages = await self.get_all_sources()
-        result = self.engine.process_query(question=question, messages=all_messages)
-        embed = create_result_embed(result)
-
-        if result.status == DecisionStatus.VERIFIED:
-            view = VerifiedResultView(result)
-        elif result.status == DecisionStatus.VERIFIED_WITH_CONFLICT_RESOLVED:
-            view = ConflictResultView(result)
-        else:
-            view = InsufficientResultView(result)
-
-        await interaction.followup.send(embed=embed, view=view)
-
-    @app_commands.command(name="health", description="Kiểm tra trạng thái hoạt động của bot.")
-    async def health_command(self, interaction: discord.Interaction):
-        await interaction.response.send_message("✅ Bot đang hoạt động bình thường (Verified Discord Navigator CP2).")
+        await interaction.response.send_message(embed=embed, ephemeral=True)

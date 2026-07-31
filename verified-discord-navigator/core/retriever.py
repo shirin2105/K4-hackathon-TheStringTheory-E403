@@ -12,7 +12,7 @@ from core.intent_classifier import IntentClassifier
 class SourceRetriever:
     """
     Retriever for official announcement messages EXCLUSIVELY from:
-    1. Official Announcement Channel (`ANNOUNCEMENT_CHANNEL_ID: 1532306560871567390`)
+    1. Official Announcement Channel (`ANNOUNCEMENT_CHANNEL_ID: 1527920171963125953`)
     2. Official Course Documents & Handbook DB (`data/mock_messages.json`)
     """
 
@@ -37,10 +37,10 @@ class SourceRetriever:
 
     async def fetch_live_messages_async(self, bot, channel_id: str, limit: int = 50) -> List[SourceMessage]:
         """
-        Fetches live messages EXCLUSIVELY from official announcement channel ID 1532306560871567390.
+        Fetches live messages EXCLUSIVELY from official announcement channel ID 1527920171963125953.
         Uses 60-second in-memory cache to prevent Discord API rate-limiting.
         """
-        target_channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID", "1532306560871567390").strip()
+        target_channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID", "1527920171963125953").strip()
 
         if not channel_id or str(channel_id).strip() != target_channel_id:
             return []
@@ -59,108 +59,79 @@ class SourceRetriever:
 
             live_msgs = []
             async for msg in channel.history(limit=limit):
-                full_content = msg.content or ""
-                if msg.embeds:
-                    embed_texts = [f"{e.title or ''} {e.description or ''}".strip() for e in msg.embeds]
-                    full_content = (full_content + " " + " ".join(embed_texts)).strip()
-
-                if not full_content:
+                if msg.author.bot:
                     continue
 
-                extracted = self.extractor.extract(full_content)
-                intent = self.classifier.classify(full_content)
+                clean_content = msg.content.strip()
+                if not clean_content:
+                    continue
 
-                topic = extracted["topic"] or "Thông báo"
-                cohort = extracted["cohort"] if extracted["cohort"] != "UNKNOWN" else "ALL"
+                posted_at_iso = msg.created_at.strftime("%Y-%m-%dT%H:%M:%S")
 
-                author_role = "official"
-                status = "updated" if "cập nhật" in full_content.lower() else "active"
+                extracted_topic = self.extractor.extract_topic(clean_content)
+                extracted_cohort = self.extractor.extract_cohort(clean_content)
 
                 source_msg = SourceMessage(
                     id=f"discord_{msg.id}",
-                    channel_name=getattr(channel, "name", "thông-báo"),
-                    channel_id=str(channel.id),
-                    message_url=msg.jump_url,
-                    author_name=msg.author.display_name,
-                    author_role=author_role,
-                    content=full_content,
-                    topic=topic,
-                    intent=intent,
-                    cohort=cohort,
-                    posted_at=msg.created_at.isoformat(),
-                    status=status,
-                    supersedes_source_id=None
+                    channel_name=f"#{getattr(channel, 'name', 'thông-báo')}",
+                    author_name=msg.author.display_name or msg.author.name,
+                    author_role="official",
+                    posted_at=posted_at_iso,
+                    content=clean_content,
+                    cohort=extracted_cohort or "ALL",
+                    topic=extracted_topic or "Announce",
+                    status="active"
                 )
                 live_msgs.append(source_msg)
 
             self._live_cache = live_msgs
             self._last_fetch_time = now
-            return live_msgs
+            return self._live_cache
+
         except Exception as e:
-            print(f"[Live Fetch Warning]: {e}")
+            print(f"[Live Fetch Error]: {e}")
             return self._live_cache
 
     def retrieve(self, query: UserQuery, messages: Optional[List[SourceMessage]] = None) -> List[SourceMessage]:
         if messages is None:
             messages = self.load_all_messages()
+        return self.retrieve_candidates(query, messages)
 
-        official_channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID", "1532306560871567390").strip()
+    def retrieve_candidates(self, query: UserQuery, messages: List[SourceMessage], top_k: Optional[int] = None) -> List[SourceMessage]:
+        if not messages:
+            return []
 
-        candidates = []
-        clean_q_text = re.sub(r"[^\w\s]", " ", query.question.lower())
-        q_topic = query.topic.lower() if query.topic else None
-
-        # Check if query asks for announcements, schedule, or daily tasks
-        schedule_announcement_terms = [
-            "thông báo", "mới nhất", "tin mới", "có gì mới", "hôm nay", "tối nay",
-            "ngày mai", "lịch", "lịch học", "làm gì", "phải làm", "nhiệm vụ", "bài tập"
-        ]
-        is_general_announcement_query = any(term in clean_q_text for term in schedule_announcement_terms)
-
-        stop_words = {
-            "là", "gì", "ở", "đâu", "nào", "có", "không", "cho", "tôi", "xin",
-            "hỏi", "mấy", "giờ", "bao", "nhiêu", "thì", "được", "với", "như", "hay",
-            "cần", "tự", "của", "và", "học", "viên", "bạn", "mình", "anh", "em",
-            "các", "về", "trong", "trên", "từ", "khoá", "khóa", "sử", "dụng", "áp",
-            "dụng", "này", "đó", "đã", "đang", "theo", "sau", "trước", "bằng"
-        }
-        query_keywords = [w for w in clean_q_text.split() if w not in stop_words and len(w) > 1]
+        scored_candidates = []
+        raw_q = getattr(query, 'raw_question', getattr(query, 'question', ''))
+        q_lower = raw_q.lower()
+        q_tokens = set(re.findall(r'\w+', q_lower))
 
         for msg in messages:
-            if msg.id.startswith("discord_") and msg.channel_id != official_channel_id:
-                continue
+            content_lower = msg.content.lower()
+            topic_lower = (msg.topic or "").lower()
 
-            msg_topic = msg.topic.lower()
-            msg_content = msg.content.lower()
+            base_score = 0.0
 
-            overlap = sum(1 for kw in query_keywords if kw in msg_content or kw in msg_topic)
+            if msg.cohort == query.cohort:
+                base_score += 15.0
+            elif msg.cohort == "ALL":
+                base_score += 10.0
 
-            # Strict gateway for live channel messages
-            if msg.channel_id == official_channel_id:
-                if not is_general_announcement_query and overlap == 0 and not (q_topic and q_topic in msg_topic):
-                    continue
+            if query.topic and (query.topic.lower() in content_lower or query.topic.lower() in topic_lower):
+                base_score += 25.0
 
-            match_score = 0
+            msg_tokens = set(re.findall(r'\w+', content_lower))
+            overlap = len(q_tokens.intersection(msg_tokens))
+            base_score += overlap * 4.0
 
-            # Topic match
-            if q_topic:
-                if q_topic == msg_topic:
-                    match_score += 5
-                elif q_topic in msg_content:
-                    match_score += 3
+            if msg.channel_name in ["#Thông báo Khóa học", "#venture-arena", "#thong-bao"]:
+                base_score += 15.0
 
-            # Intent match
-            if query.intent.lower() != "unknown" and query.intent.lower() == msg.intent.lower():
-                match_score += 1
+            if base_score > 0 or len(q_tokens) == 0:
+                scored_candidates.append((base_score, msg))
 
-            # Keyword overlap score
-            match_score += (overlap * 2)
-
-            # Live announcement relevance boost ONLY if relevant
-            if msg.channel_id == official_channel_id and (is_general_announcement_query or overlap > 0):
-                match_score += 5
-
-            if match_score > 0:
-                candidates.append(msg)
-
-        return candidates
+        scored_candidates.sort(key=lambda x: x[0], reverse=True)
+        results = [candidate for score, candidate in scored_candidates]
+        if top_k is not None:
+            return results[:top_k]
+        return results
