@@ -1,9 +1,10 @@
-import os
+import logging
+from typing import List, Dict, Any, Optional
 from datetime import datetime
-from typing import List, Optional
-from models.query import UserQuery
+
 from models.message import SourceMessage
-from models.result import DecisionResult, DecisionStatus, RejectedSource
+from models.query import UserQuery
+from models.result import DecisionResult, DecisionStatus
 from core.intent_classifier import IntentClassifier
 from core.entity_extractor import EntityExtractor
 from core.retriever import SourceRetriever
@@ -11,24 +12,29 @@ from core.source_ranker import SourceRanker, ScoredSource
 from core.conflict_detector import ConflictDetector
 from core.llm_client import DeepSeekClient
 
+logger = logging.getLogger("DecisionEngine")
+
 
 class DecisionEngine:
     """
-    Main orchestrator for Verified Discord Navigator.
-    Integrates NLP classification, retrieval, multi-factor ranking,
-    conflict detection, Top 5 timestamp synthesis, and DeepSeek LLM.
-    Enforces Retrieve First, Decide Second Strategy.
+    Central Decision Engine implementing the 8-Step Verification Pipeline:
+    1. Intent Classification & Entity Extraction
+    2. Candidate Retrieval (Retrieve First from Official Channel & 1,050 KB Entries)
+    3. 8-Factor Source Scoring (Authority, Cohort, Topic, Date, Resource, Freshness, Status, Semantic)
+    4. Confidence Threshold Gate (≥ 60.0 Score)
+    5. Conflict Resolution & Supersedes Detection
+    6. Time-Aware LLM Synthesis (DeepSeek V3) with Strict Time Comparison Guardrails
     """
 
     MIN_CONFIDENCE_SCORE = 60.0
 
-    def __init__(self, data_path: Optional[str] = None):
+    def __init__(self, data_path: Optional[str] = None, api_key: Optional[str] = None):
         self.intent_classifier = IntentClassifier()
         self.entity_extractor = EntityExtractor()
         self.retriever = SourceRetriever(data_path=data_path)
         self.ranker = SourceRanker()
         self.conflict_detector = ConflictDetector()
-        self.llm_client = DeepSeekClient()
+        self.llm_client = DeepSeekClient(api_key=api_key)
 
     def process_query(
         self,
@@ -93,7 +99,19 @@ class DecisionEngine:
 
         # 5. Detect Conflicts & Superseded Messages
         selected_scored, rejected_sources, has_conflict = self.conflict_detector.detect_and_resolve(scored_sources, query)
-        final_source = selected_scored.source if selected_scored else top_scored.source
+        final_source = selected_scored.source if selected_scored else None
+
+        if final_source is None:
+            return DecisionResult(
+                status=DecisionStatus.INSUFFICIENT_EVIDENCE,
+                confidence=0.20,
+                answer="Thông báo liên quan đã hết hiệu lực hoặc bị hủy bỏ. Không có dữ liệu chính thức mới hơn.",
+                selected_source=None,
+                candidate_sources=[s.source for s in scored_sources],
+                rejected_sources=rejected_sources,
+                needs_mod=True,
+                verification_details={"reason": "Selected source expired or superseded without active replacement"}
+            )
 
         # 6. Build Top 5 Timestamped Context Blocks for LLM Time-Aware Synthesis
         high_scoring_sources = [s for s in scored_sources if s.score >= 30.0]
@@ -110,7 +128,7 @@ class DecisionEngine:
 
         context_content = "\n\n".join(combined_content_blocks)
 
-        # 7. LLM Time-Aware Answer Synthesis (Retrieve First, Decide Second)
+        # 7. LLM Time-Aware Answer Synthesis with Time Guardrails
         llm_answer = self.llm_client.synthesize_answer(
             question=question,
             source_content=context_content,
@@ -118,11 +136,13 @@ class DecisionEngine:
             current_time_str=current_time_str
         )
 
-        refusal_terms = [
-            "chỉ hỗ trợ giải đáp các thắc mắc", "chưa có thông tin", "không tìm thấy thông tin",
-            "không có thông tin", "không đề cập", "không có đề cập", "chưa đề cập", "không thấy"
+        refusal_phrases = [
+            "xin lỗi, tôi là trợ lý khóa học", "không tìm thấy thông tin",
+            "không có thông tin", "hoàn toàn không liên quan", "chưa tìm thấy thông tin"
         ]
-        if any(term in llm_answer.lower() for term in refusal_terms):
+        is_refusal = any(phrase in llm_answer.lower() for phrase in refusal_phrases)
+
+        if is_refusal:
             status = DecisionStatus.INSUFFICIENT_EVIDENCE
             confidence = 0.20
             needs_mod = True
@@ -133,22 +153,27 @@ class DecisionEngine:
             needs_mod = False
             selected_source = final_source
 
-        query_dict = query.model_dump() if hasattr(query, "model_dump") else query.dict()
+        # Determine Confidence Level String
+        if confidence >= 0.85:
+            conf_level = "high"
+        elif confidence >= 0.60:
+            conf_level = "medium"
+        else:
+            conf_level = "low"
 
         return DecisionResult(
             status=status,
             confidence=confidence,
+            confidence_level=conf_level,
             answer=llm_answer,
             selected_source=selected_source,
             candidate_sources=[s.source for s in scored_sources],
             rejected_sources=rejected_sources,
             needs_mod=needs_mod,
             verification_details={
-                "score_breakdown": top_scored.score_breakdown,
                 "total_score": top_scored.score,
-                "query_params": query_dict,
-                "current_system_time": current_time_str,
-                "top_5_sources_used": len(top_5_scored),
-                "llm_engine": "DeepSeek-V3 (deepseek-chat)"
+                "score_breakdown": top_scored.score_breakdown,
+                "has_conflict": has_conflict,
+                "synthesized_by": "DeepSeek-V3 (deepseek-chat)"
             }
         )

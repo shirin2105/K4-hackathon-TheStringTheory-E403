@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 from typing import List, Tuple, Dict, Any
 from models.message import SourceMessage
 from models.query import UserQuery
@@ -32,7 +33,7 @@ class SourceRanker:
         "updated": 25,
         "active": 20,
         "superseded": -40,
-        "expired": -50
+        "expired": -70
     }
 
     STOP_WORDS = {
@@ -40,7 +41,7 @@ class SourceRanker:
         "hỏi", "mấy", "giờ", "bao", "nhiêu", "thì", "được", "với", "như", "hay",
         "cần", "tự", "của", "và", "học", "viên", "bạn", "mình", "anh", "em",
         "các", "về", "trong", "trên", "từ", "khoá", "khóa", "sử", "dụng", "áp",
-        "dụng", "này", "đó", "đã", "đang", "theo", "sau", "trước", "bằng",
+        "dụng", "này", "đó", "đang", "theo", "sau", "trước", "bằng",
         "mang", "tính", "nhà", "rất", "nhiều", "cần", "được", "hoặc", "trường"
     }
 
@@ -77,17 +78,25 @@ class SourceRanker:
             elif msg_cohort == "ALL":
                 cohort_score = 15
             else:
-                cohort_score = -50
+                cohort_score = -100
         else:
             cohort_score = 15 if msg_cohort == "ALL" else 10
         breakdown["cohort_match_score"] = float(cohort_score)
 
-        # 3. Topic Match Score (Exclude generic fallback topics)
+        # 3. Topic & Specific Entity Match Score
         q_topic = (query.topic or "").lower().strip()
         msg_topic = source.topic.lower().strip()
         msg_content = source.content.lower()
+        clean_q_text = re.sub(r"[^\w\s]", " ", query.question.lower())
 
-        if q_topic and q_topic not in self.GENERIC_TOPICS:
+        # Check for specific numbered entity request (e.g. "Workshop 99", "Gate 99") or specific modifiers ("đặc biệt")
+        numbers_in_query = re.findall(r'\b\d+\b', clean_q_text)
+        has_unmatched_number = any(num not in msg_content and num not in msg_topic for num in numbers_in_query)
+        has_unmatched_modifier = ("đặc biệt" in clean_q_text and "đặc biệt" not in msg_content)
+
+        if has_unmatched_number or has_unmatched_modifier:
+            topic_score = -100
+        elif q_topic and q_topic not in self.GENERIC_TOPICS:
             if q_topic == msg_topic:
                 topic_score = 20
             elif q_topic in msg_content:
@@ -98,25 +107,29 @@ class SourceRanker:
             topic_score = 0
         breakdown["topic_match_score"] = float(topic_score)
 
-        # 4. Date Reference Match Score (Includes date formats like 30/7, 30/07 and live announcements)
-        clean_q_text = re.sub(r"[^\w\s]", " ", query.question.lower())
+        # 4. Date Reference Match Score
         q_date = query.date_reference
         if not q_date:
             if any(term in clean_q_text for term in self.TODAY_TERMS):
                 q_date = "hôm nay"
 
+        now_dt = datetime.now()
+        today_date_str = now_dt.strftime("%Y-%m-%d")
+        today_dm_str = now_dt.strftime("%d/%m")
+        today_dm_short = now_dt.strftime("%d/%m").lstrip("0").replace("/0", "/")
+
         if q_date:
             q_date_lower = q_date.lower()
             if q_date_lower in self.TODAY_TERMS:
-                today_terms = ["hôm nay", "tối nay", "sáng nay", "chiều nay", "30/7", "30/07", "30-07", "31/7", "31/07"]
-                if any(term in msg_content for term in today_terms) or source.id.startswith("discord_"):
+                msg_posted_date = source.posted_at[:10] if source.posted_at else ""
+                if source.status in ["active", "updated"] or msg_posted_date == today_date_str or today_dm_str in msg_content or today_dm_short in msg_content:
                     date_score = 15
                 else:
-                    date_score = -80
+                    date_score = -100
             elif q_date_lower in msg_content:
                 date_score = 15
             else:
-                date_score = -80
+                date_score = -100
         else:
             date_score = 0
         breakdown["date_match_score"] = float(date_score)
@@ -125,10 +138,11 @@ class SourceRanker:
         q_res = query.resource_type
         if q_res:
             q_res_lower = q_res.lower()
-            if q_res_lower in msg_content or "http" in msg_content or "drive" in msg_content or ".pdf" in msg_content:
+            msg_res_type = getattr(source, "resource_type", "") or ""
+            if q_res_lower in msg_content or msg_res_type.lower() == q_res_lower:
                 res_score = 15
             else:
-                res_score = -60
+                res_score = -100
         else:
             res_score = 0
         breakdown["resource_match_score"] = float(res_score)
@@ -139,50 +153,41 @@ class SourceRanker:
 
         # 7. Active Status Score
         status_score = self.STATUS_WEIGHTS.get(source.status, 0)
-        breakdown["active_status_score"] = float(status_score)
+        breakdown["status_score"] = float(status_score)
 
-        # 8. Query Relevance Guardrail
-        query_words = [w for w in clean_q_text.split() if w not in self.STOP_WORDS and len(w) > 1]
-        is_general_announcement_query = any(term in clean_q_text for term in self.SCHEDULE_ANNOUNCEMENT_TERMS)
+        # 8. Query Keyword Overlap Score
+        q_tokens = set([w for w in clean_q_text.split() if w not in self.STOP_WORDS and len(w) > 1])
 
-        if query_words and not is_general_announcement_query:
-            content_tokens = set(re.sub(r"[^\w\s]", " ", msg_content).split())
-            matched_words = [w for w in query_words if w in content_tokens]
+        # XP/EXP/Rank handling
+        if any(term in clean_q_text for term in ["xp", "exp", "rank"]):
+            q_tokens.add("xp")
+            q_tokens.add("rank")
 
-            has_keyword_match = (
-                len(matched_words) >= 2 or
-                any(w in ["laptop", "codelabs", "github", "drive", "xp", "exp", "rank"] for w in matched_words) or
-                (q_topic and q_topic not in self.GENERIC_TOPICS and q_topic in msg_topic)
-            )
+        msg_tokens = set(re.findall(r'\w+', msg_content))
+        overlap_count = len(q_tokens.intersection(msg_tokens))
+        semantic_score = min(25, overlap_count * 5)
+        breakdown["semantic_score"] = float(semantic_score)
 
-            if not has_keyword_match:
-                breakdown["relevance_penalty"] = -80.0
+        total_score = auth_score + cohort_score + topic_score + date_score + res_score + freshness_score + status_score + semantic_score
 
-        # Total score calculation
-        total_score = float(sum(breakdown.values()))
+        return ScoredSource(
+            source=source,
+            score=max(0.0, float(total_score)),
+            score_breakdown=breakdown
+        )
 
-        # Cap history chat log entries (log_doc_) for schedule/deadline queries below 60 threshold
-        if source.id.startswith("log_doc_") and query.intent in ["schedule", "deadline", "workshop"]:
-            total_score = min(total_score, 55.0)
-
-        return ScoredSource(source=source, score=total_score, score_breakdown=breakdown)
-
-    def rank_sources(self, candidates: List[SourceMessage], query: UserQuery) -> List[ScoredSource]:
-        if not candidates:
+    def rank_sources(self, sources: List[SourceMessage], query: UserQuery) -> List[ScoredSource]:
+        if not sources:
             return []
 
-        sorted_by_time = sorted(
-            candidates,
-            key=lambda m: m.parse_posted_at(),
-            reverse=True
-        )
-        newest_id = sorted_by_time[0].id if sorted_by_time else None
+        sorted_sources = sorted(sources, key=lambda x: x.posted_at, reverse=True)
+        newest_id = sorted_sources[0].id if sorted_sources else None
 
-        scored_list = []
-        for msg in candidates:
-            is_newest = (msg.id == newest_id)
-            scored = self.score_source(msg, query, is_newest=is_newest)
-            scored_list.append(scored)
+        scored_sources = []
+        for src in sources:
+            is_newest = (src.id == newest_id)
+            scored = self.score_source(src, query, is_newest=is_newest)
+            scored_sources.append(scored)
 
-        scored_list.sort(key=lambda s: s.score, reverse=True)
-        return scored_list
+        scored_sources.sort(key=lambda x: x.score, reverse=True)
+        return scored_sources

@@ -1,86 +1,83 @@
 import re
-from typing import Dict, Any, Optional
+from typing import Dict, Optional
 
 
 class EntityExtractor:
     """
-    Rule & Regex entity extractor for CP2 hackathon prototype.
-    Extracts cohort, topic, date_reference, and resource_type.
+    Extracts structured entities (cohort, topic, date_reference, resource_type) from user queries.
     """
 
     COHORT_PATTERNS = [
-        (re.compile(r"\b(khóa|khoá)\s*4\b|\bk4\b", re.IGNORECASE), "K4"),
-        (re.compile(r"\b(khóa|khoá)\s*3\b|\bk3\b", re.IGNORECASE), "K3"),
-        (re.compile(r"\b(khóa|khoá)\s*2\b|\bk2\b", re.IGNORECASE), "K2"),
-        (re.compile(r"\b(khóa|khoá)\s*1\b|\bk1\b", re.IGNORECASE), "K1"),
-        (re.compile(r"\bcohort\s*2\b", re.IGNORECASE), "K2"),
-        (re.compile(r"\bcohort\s*3\b", re.IGNORECASE), "K3"),
-        (re.compile(r"\bcohort\s*4\b", re.IGNORECASE), "K4"),
+        (r'\b(khóa|khoá|cohort)\s*2\b|\bk2\b', "K2"),
+        (r'\b(khóa|khoá|cohort)\s*3\b|\bk3\b', "K3"),
+        (r'\b(khóa|khoá|cohort)\s*4\b|\bk4\b', "K4"),
     ]
 
-    DYNAMIC_TOPIC_PATTERNS = [
-        re.compile(r"\bworkshop\s*\d+\b", re.IGNORECASE),
-        re.compile(r"\bgate\s*\d+\b", re.IGNORECASE),
-        re.compile(r"\bcheckpoint\s*\d+\b|\bcp\s*\d+\b", re.IGNORECASE),
+    TOPIC_PATTERNS = [
+        (r'\bgate\s*1\b', "Gate 1"),
+        (r'\bgate\s*2\b', "Gate 2"),
+        (r'\bgate\s*3\b', "Gate 3"),
+        (r'\bcp2\b|\bcheckpoint\s*2\b', "CP2"),
+        (r'\bcp1\b|\bcheckpoint\s*1\b', "CP1"),
+        (r'\bcp3\b|\bcheckpoint\s*3\b', "CP3"),
+        (r'\bcp4\b|\bcheckpoint\s*4\b', "CP4"),
+        (r'\bcp5\b|\bcheckpoint\s*5\b', "CP5"),
+        (r'\bxp\b|\bexp\b|\brank\b|\bđiểm\b', "XP"),
+        (r'\bworkshop\b', "Workshop"),
+        (r'\blab\b', "Lab"),
     ]
 
-    STATIC_TOPIC_PATTERNS = [
-        (re.compile(r"\bworkshop\b", re.IGNORECASE), "Workshop"),
-        (re.compile(r"\bgate\b", re.IGNORECASE), "Gate"),
-        (re.compile(r"\bventure\s*arena\b", re.IGNORECASE), "Venture Arena"),
-    ]
-
-    DATE_REF_PATTERNS = [
-        "tối nay", "hôm nay", "chiều nay", "sáng nay",
-        "tuần sau", "ngày mai", "tuần này", "cuối tuần"
+    DATE_PATTERNS = [
+        (r'\btối\s*nay\b', "tối nay"),
+        (r'\bhôm\s*nay\b|\bsáng\s*nay\b|\bchiều\s*nay\b', "hôm nay"),
+        (r'\bngày\s*mai\b|\bmai\b', "ngày mai"),
+        (r'\btuần\s*sau\b|\btuần\s*tới\b', "tuần sau"),
+        (r'\btuần\s*này\b', "tuần này"),
+        (r'\b\d{1,2}/\d{1,2}\b', "date_spec"),
     ]
 
     RESOURCE_PATTERNS = [
-        "slide", "link", "repo", "form", "thread", "tài liệu", "đáp án", "code"
+        (r'\bslide\b|\bbài\s*giảng\b', "slide"),
+        (r'\blink\b|\bđường\s*dẫn\b|\burl\b', "link"),
+        (r'\brepo\b|\bgithub\b|\bcode\b', "repo"),
+        (r'\bdoc\b|\btài\s*liệu\b|\bfile\b|\bpdf\b', "document"),
     ]
 
     def extract(self, text: str) -> Dict[str, Optional[str]]:
         text_lower = text.lower()
 
-        # Cohort extraction
+        # Cohort Extraction
         cohort = "UNKNOWN"
         for pattern, val in self.COHORT_PATTERNS:
-            if pattern.search(text):
+            if re.search(pattern, text_lower):
                 cohort = val
                 break
 
-        # Dynamic Topic extraction (e.g. Workshop 99, Gate 1, CP2)
+        # Topic Extraction
         topic = None
-        for pattern in self.DYNAMIC_TOPIC_PATTERNS:
-            match = pattern.search(text)
+        for pattern, val in self.TOPIC_PATTERNS:
+            if re.search(pattern, text_lower):
+                topic = val
+                break
+
+        # Date Reference Extraction
+        date_reference = None
+        for pattern, val in self.DATE_PATTERNS:
+            match = re.search(pattern, text_lower)
             if match:
-                topic = match.group(0).title()
+                date_reference = match.group(0) if val == "date_spec" else val
                 break
 
-        # Static Topic fallback if dynamic match not found
-        if not topic:
-            for pattern, val in self.STATIC_TOPIC_PATTERNS:
-                if pattern.search(text):
-                    topic = val
-                    break
-
-        # Date reference extraction
-        date_ref = None
-        for ref in self.DATE_REF_PATTERNS:
-            if ref in text_lower:
-                date_ref = ref
-                break
-
-        # Resource type extraction
-        res_type = None
-        for res in self.RESOURCE_PATTERNS:
-            if res in text_lower:
-                res_type = res
+        # Resource Type Extraction
+        resource_type = None
+        for pattern, val in self.RESOURCE_PATTERNS:
+            if re.search(pattern, text_lower):
+                resource_type = val
                 break
 
         return {
             "cohort": cohort,
             "topic": topic,
-            "date_reference": date_ref,
-            "resource_type": res_type
+            "date_reference": date_reference,
+            "resource_type": resource_type
         }

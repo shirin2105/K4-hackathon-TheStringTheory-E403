@@ -23,18 +23,61 @@ class ConflictDetector:
         if not scored_sources:
             return None, [], False
 
-        top_candidate = scored_sources[0]
-
-        if len(scored_sources) == 1:
-            if top_candidate.source.status in ["superseded", "expired"]:
-                reason = "Thông báo đã hết hiệu lực hoặc bị thay thế"
-                return None, [RejectedSource(source=top_candidate.source, reason=reason)], False
-            return top_candidate, [], False
-
+        q_cohort = query.cohort.upper() if query.cohort else "UNKNOWN"
         rejected: List[RejectedSource] = []
         has_conflict = False
 
-        for item in scored_sources[1:]:
+        # 1. Check if official announcement for this query topic/cohort is expired/superseded with no active replacement
+        official_expired = [
+            s for s in scored_sources
+            if s.source.status in ["superseded", "expired"]
+            and not s.source.id.startswith("log_doc_")
+            and (q_cohort == "UNKNOWN" or s.source.cohort.upper() in [q_cohort, "ALL"])
+            and (not query.topic or s.source.topic.lower() == query.topic.lower())
+        ]
+        official_active = [
+            s for s in scored_sources
+            if s.source.status in ["active", "updated"]
+            and not s.source.id.startswith("log_doc_")
+            and (q_cohort == "UNKNOWN" or s.source.cohort.upper() in [q_cohort, "ALL"])
+            and (not query.topic or s.source.topic.lower() == query.topic.lower())
+        ]
+
+        if official_expired and not official_active:
+            for item in official_expired:
+                rejected.append(RejectedSource(
+                    source=item.source,
+                    reason="Thông báo đã hết hiệu lực hoặc bị thay thế"
+                ))
+            return None, rejected, True
+
+        # 2. Select top candidate
+        if q_cohort != "UNKNOWN":
+            cohort_candidates = [s for s in scored_sources if s.source.cohort.upper() in [q_cohort, "ALL"]]
+            top_candidate = cohort_candidates[0] if cohort_candidates else scored_sources[0]
+        else:
+            top_candidate = scored_sources[0]
+
+        if top_candidate.source.status in ["superseded", "expired"]:
+            has_conflict = True
+            rejected.append(RejectedSource(
+                source=top_candidate.source,
+                reason="Thông báo đã hết hiệu lực hoặc bị thay thế"
+            ))
+            valid_sources = [
+                s for s in scored_sources
+                if s.source.status not in ["superseded", "expired"]
+                and (q_cohort == "UNKNOWN" or s.source.cohort.upper() in [q_cohort, "ALL"])
+                and s.source.topic.lower() == top_candidate.source.topic.lower()
+            ]
+            if valid_sources:
+                return valid_sources[0], rejected, True
+            return None, rejected, True
+
+        for item in scored_sources:
+            if item.source.id == top_candidate.source.id:
+                continue
+
             other = item.source
 
             # Skip historical background log entries when calculating official announcement conflicts
@@ -55,7 +98,7 @@ class ConflictDetector:
                         source=other,
                         reason="Thông báo cũ đã được cập nhật"
                     ))
-                elif query.cohort != "UNKNOWN" and other.cohort != "ALL" and other.cohort != query.cohort:
+                elif q_cohort != "UNKNOWN" and other.cohort != "ALL" and other.cohort != q_cohort:
                     rejected.append(RejectedSource(
                         source=other,
                         reason=f"Thông báo cũ thuộc Cohort {other.cohort.replace('K', '')}"

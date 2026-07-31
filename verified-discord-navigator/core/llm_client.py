@@ -12,9 +12,9 @@ class DeepSeekClient:
     """
     DeepSeek LLM Integration Client using standard library HTTP.
     Uses model: deepseek-chat (DeepSeek V3 Flash/Chat).
-    Strategy: Strict No-Filler & Strict Scope.
+    Strategy: Strict No-Filler, Strict Scope & Time Comparison Guardrail.
     - Answers ONLY what is explicitly asked.
-    - Never appends unasked handbook tutorials, guidelines, or extra tips.
+    - Compares posted_at date against current_time to avoid mistaking yesterday's 'tối nay' for today!
     """
 
     def __init__(self, api_key: Optional[str] = None):
@@ -53,9 +53,6 @@ class DeepSeekClient:
             return ""
 
     def analyze_query(self, question: str) -> Dict[str, Any]:
-        """
-        Uses DeepSeek Chat to extract intent, cohort, topic, date_reference, resource_type in JSON.
-        """
         system_prompt = (
             "Bạn là AI phân tích truy vấn cho hệ thống Discord khoá học. "
             "Hãy phân tích câu hỏi và trả về duy nhất 1 JSON object có các trường:\n"
@@ -78,7 +75,7 @@ class DeepSeekClient:
 
     def synthesize_answer(self, question: str, source_content: str, cohort: str, current_time_str: Optional[str] = None) -> str:
         """
-        Synthesizes answer following strict No-Filler, No-Unasked-Info principles.
+        Synthesizes answer following strict No-Filler, No-Unasked-Info, and Time Comparison Guardrails.
         """
         if current_time_str is None:
             current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -87,14 +84,18 @@ class DeepSeekClient:
             "Bạn là Trợ lý AI Phản hồi Khóa học AI20K Build Phase.\n"
             f"Thời điểm hiện tại của hệ thống: {current_time_str}.\n\n"
             "QUY TẮC NGHÊM NGẶT (TUYỆT ĐỐI TUÂN THỦ):\n"
-            "1. ĐÚNG VÀ ĐỦ - KHÔNG THỪA THÔNG TIN KHÔNG ĐƯỢC HỎI:\n"
+            "1. SO SÁNH THỜI GIAN ĐĂNG VÀ THỜI GIAN HIỆN TẠI (TIME COMPARISON GUARDRAIL):\n"
+            "   - BẮT BUỘC so sánh ngày đăng bài (`Thời điểm đăng`) của thông báo với Ngày hiện tại (`Thời điểm hiện tại`).\n"
+            "   - Nếu một thông báo ghi 'tối nay', 'hôm nay' ĐƯỢC ĐĂNG VÀO NGÀY HÔM QUA (ví dụ đăng ngày 30/07/2026 nhưng ngày hiện tại là 31/07/2026): Bạn BẮT BUỘC phải trích dẫn thời gian trong thông báo kèm ngày đăng rõ ràng. Ví dụ: 'Theo thông báo mới nhất từ BTC (đăng ngày 30/07/2026), workshop diễn ra lúc 20:00 (cho tối 30/07). Hiện chưa có thông báo mới cho hôm nay (31/07/2026).'\n"
+            "   - TUYỆT ĐỐI KHÔNG khẳng định thông báo ngày hôm qua là của 'tối nay' (ngày hiện tại) mà phải nêu rõ ngày đăng bài.\n"
+            "2. ĐÚNG VÀ ĐỦ - KHÔNG THỪA THÔNG TIN KHÔNG ĐƯỢC HỎI:\n"
             "   - Chỉ trả lời chính xác điều được hỏi trong câu hỏi. TUYỆT ĐỐI KHÔNG tự động chèn thêm các hướng dẫn quy trình phụ (như quy trình fork repo, hướng dẫn nộp lab chung...) nếu người dùng KHÔNG hỏi.\n"
-            "   - Với các câu hỏi về lịch trình/công việc ('hôm nay làm gì', 'hôm nay phải làm gì', 'lịch hôm nay'): CHỈ liệt kê đúng các sự kiện/deadline/workshop có mốc thời gian là HÔM NAY. KHÔNG liệt kê hướng dẫn quy trình chung.\n"
-            "2. RETRIEVE FIRST - GIẢI ĐÁP KHÁI NIỆM KHÓA HỌC:\n"
-            "   - Nếu câu hỏi hỏi về khái niệm/quy định trong khóa học (XP, EXP, Rank, Gate, Ticket, Codelabs...): Trả lời đi thẳng vào định nghĩa và công dụng, không chào hỏi dông dài.\n"
-            "3. TỪ CHỐI CÂU HỎI NGOÀI KHÓA HỌC:\n"
-            "   - Nếu câu hỏi không có trong nguồn và hoàn toàn không liên quan khóa học (thời tiết, tán gẫu...), từ chối ngắn gọn đúng câu: 'Xin lỗi, tôi là Trợ lý Khóa học và chỉ hỗ trợ giải đáp các thắc mắc, lịch trình, bài tập và quy định liên quan đến khóa học.'\n"
-            "4. KHÔNG CHÈN LINK GIẢ HOẶC LINK KHÔNG ĐƯỢC YÊU CẦU."
+            "   - Với câu hỏi về lịch trình ('hôm nay làm gì', 'workshop tối nay'): CHỈ liệt kê các sự kiện thuộc HÔM NAY. KHÔNG tự bịa hoặc lấy thông báo cũ làm thông báo mới.\n"
+            "3. RETRIEVE FIRST - GIẢI ĐÁP KHÁI NIỆM KHÓA HỌC:\n"
+            "   - Trả lời thẳng vào định nghĩa và công dụng khái niệm (XP, Rank, Gate...).\n"
+            "4. TỪ CHỐI CÂU HỎI NGOÀI KHÓA HỌC:\n"
+            "   - Từ chối ngắn gọn đúng câu nếu ngoài phạm vi khóa học.\n"
+            "5. KHÔNG CHÈN LINK GIẢ HOẶC LINK KHÔNG ĐƯỢC YÊU CẦU."
         )
 
         user_prompt = f"Thời điểm hiện tại: {current_time_str}\nCâu hỏi: {question}\nCohort: {cohort}\n\nTOP NGUỒN TRÍCH XUẤT:\n{source_content}"
