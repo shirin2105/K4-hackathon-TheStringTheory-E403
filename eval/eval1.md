@@ -55,7 +55,7 @@
    - **Hành vi AI kỳ vọng:** Chỉ đúng kênh và phương thức nộp qua Form chính thức. Trả lời sai kênh (ví dụ chat chung) khiến bài nộp bị trôi và không được ghi nhận điểm.
    - **Câu trả lời chuẩn:** *"Bài nộp Operational Document (OD) cần được lưu trong repo GitHub của team và nộp đường link qua Form nộp bài chính thức tại kênh `#thong-bao` (không gửi trực tiếp vào tin nhắn chat chung)."*
 
-10. **Câu 10:** *"@Trợ lý Kute nếu nộp daily muộn hơn 10h thì sao"*
+10. **Câu 10:** *"/ask nếu nộp daily muộn hơn 10h thì sao"*
     - **Đặc điểm:** Khiếm khuyết *(Trộn tiếng Anh "daily", không rõ AM/PM, tag bot)* | **Nguồn:** Log Discord khóa học (`#hoi-dap` - `log_doc_224`).
     - **Hành vi AI kỳ vọng:** Trả lời đúng chế tài trừ XP khi nộp muộn, tránh học viên hiểu nhầm không bị phạt.
     - **Câu trả lời chuẩn:** *"Theo quy định khóa học, Daily Standup nộp sau 10:00 sáng hàng ngày sẽ bị trừ 50% XP của ngày đó. Nộp sau 23:59 cùng ngày sẽ tính là vắng nộp Daily (0 XP)."*
@@ -78,19 +78,19 @@
 ---
 
 #### Các câu hỏi khác (Logistics Discord, Thao Tác, Cấu Hình Repo, Form Nộp Bài)
-14. **Câu 14:** *"@Trợ lý Kute toi muon lay link git cua team thi lay o dau"*
+14. **Câu 14:** *"/ask toi muon lay link git cua team thi lay o dau"*
     - **Đặc điểm:** Khiếm khuyết *(Lỗi chính tả không dấu "toi muon lay", trộn tiếng Anh "link git")* | **Nguồn:** Log Discord (`log_doc_165`).
     - **Câu trả lời chuẩn:** *"Link Git repo của team bạn được niêm yết trong bảng chốt team tại kênh `#danh-sach-team` hoặc tin nhắn ghim (pinned message) trong kênh chat riêng của team bạn (kênh `t-xxx`)."*
 
-15. **Câu 15:** *"@Trợ lý Kute nộp daily stand up ở đâu (thread của team không cho gửi tin nhắn)?"*
+15. **Câu 15:** *"/ask nộp daily stand up ở đâu (thread của team không cho gửi tin nhắn)?"*
     - **Đặc điểm:** Khiếm khuyết *(Trộn tiếng Anh "daily stand up", "thread")* | **Nguồn:** Log Discord (`log_doc_234`).
     - **Câu trả lời chuẩn:** *"Nếu kênh/thread của team không cho gửi tin nhắn, nguyên nhân do tài khoản của bạn chưa được cấp Role team. Bạn hãy thông báo tại kênh `#support` để Mod kiểm tra và phân Role."*
 
-16. **Câu 16:** *"@Trợ lý Kute chưa có team thì không nộp daily stand up à"*
+16. **Câu 16:** *"/ask chưa có team thì không nộp daily stand up à"*
     - **Đặc điểm:** Khiếm khuyết *(Cụt lủn, trộn tiếng Anh "daily stand up")* | **Nguồn:** Log Discord (`log_doc_208`).
     - **Câu trả lời chuẩn:** *"Học viên chưa có team chưa cần nộp Daily Standup cá nhân, tuy nhiên bạn cần đăng ký ghép nhóm ngay tại kênh `#ghep-team` để được BTC hỗ trợ xếp đội hình sớm nhất."*
 
-17. **Câu 17:** *"@Trợ lý Kute AI log check log như nào và thêm vào github như nào"*
+17. **Câu 17:** *"/ask AI log check log như nào và thêm vào github như nào"*
     - **Đặc điểm:** Khiếm khuyết *(Trộn tiếng Anh "AI log", "check log", "github")* | **Nguồn:** Log Discord (`log_doc_127`).
     - **Câu trả lời chuẩn:** *"Để tích hợp AI log: (1) Cài thư viện `ailog` theo file hướng dẫn của repo mẫu, (2) Điền `AILOG_API_KEY` vào file `.env`, (3) Push code lên GitHub, hệ thống webhook sẽ tự động lấy log."*
 

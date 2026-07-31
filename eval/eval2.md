@@ -1,7 +1,7 @@
 ### 12 Câu Hỏi Khiếm Khuyết
 ##### 1. Câu hỏi 1
-- **Nội dung nguyên văn:** `"@Trợ lý Kute toi muon lay link git cua team thi lay o dau"`
-- **Loại khiếm khuyết:** Lỗi chính tả không dấu (*toi muon lay*, *o dau*), Trộn tiếng Anh (*link git*), Tag tên bot (`@Trợ lý Kute`).
+- **Nội dung nguyên văn:** `"/ask toi muon lay link git cua team thi lay o dau"`
+- **Loại khiếm khuyết:** Lỗi chính tả không dấu (*toi muon lay*, *o dau*), Trộn tiếng Anh (*link git*), Tag tên bot (`/ask`).
 - **Nguồn thực tế:** Log Discord khóa học (Kênh `#general` - ID: `log_doc_165`).
 - **Câu trả lời chuẩn (Ground Truth):**
   > "Link Git repo của team bạn được niêm yết trong bảng chốt team tại kênh `#danh-sach-team` hoặc tin nhắn ghim (pinned message) trong kênh chat riêng của team bạn (kênh `t-xxx`)."
@@ -21,28 +21,28 @@
   > "Câu hỏi của bạn chưa đủ ngữ cảnh. Bạn đang muốn hỏi về: (1) Lịch Workshop/Livestream tối nay, hay (2) Deadline nộp bài tập/Gate tối nay? Vui lòng cung cấp thêm chi tiết để bot tra cứu chính xác."
 
 ##### 4. Câu hỏi 4
-- **Nội dung nguyên văn:** `"@Trợ lý Kute nếu nộp daily muộn hơn 10h thì sao"`
-- **Loại khiếm khuyết:** Trộn tiếng Anh (*daily*), Không rõ mốc thời gian sáng/tối (*10h*), Tag tên bot (`@Trợ lý Kute`).
+- **Nội dung nguyên văn:** `"/ask nếu nộp daily muộn hơn 10h thì sao"`
+- **Loại khiếm khuyết:** Trộn tiếng Anh (*daily*), Không rõ mốc thời gian sáng/tối (*10h*), Tag tên bot (`/ask`).
 - **Nguồn thực tế:** Log Discord khóa học (Kênh `#hoi-dap` - ID: `log_doc_224`).
 - **Câu trả lời chuẩn (Ground Truth):**
   > "Theo quy định khóa học, Daily Standup nộp sau 10:00 sáng hàng ngày sẽ bị trừ 50% XP của ngày đó. Nộp sau 23:59 cùng ngày sẽ tính là vắng nộp Daily (0 XP)."
 
 ##### 5. Câu hỏi 5
-- **Nội dung nguyên văn:** `"@Trợ lý Kute nộp daily stand up ở đâu (thread của team không cho gửi tin nhắn)?"`
+- **Nội dung nguyên văn:** `"/ask nộp daily stand up ở đâu (thread của team không cho gửi tin nhắn)?"`
 - **Loại khiếm khuyết:** Trộn tiếng Anh (*daily stand up*, *thread*), Văn nói giải thích ngập ngừng trong ngoặc đơn, Tag tên bot.
 - **Nguồn thực tế:** Log Discord khóa học (Kênh `#hoi-dap` - ID: `log_doc_234`).
 - **Câu trả lời chuẩn (Ground Truth):**
   > "Nếu kênh/thread của team không cho gửi tin nhắn, nguyên nhân do tài khoản của bạn chưa được cấp Role team. Bạn hãy thông báo tại kênh `#support` để Mod kiểm tra và phân Role."
 
 ##### 6. Câu hỏi 6
-- **Nội dung nguyên văn:** `"@Trợ lý Kute AI log check log như nào và thêm vào github như nào"`
+- **Nội dung nguyên văn:** `"/ask AI log check log như nào và thêm vào github như nào"`
 - **Loại khiếm khuyết:** Trộn tiếng Anh (*AI log*, *check log*, *github*), Khẩu ngữ xưng hỏi (*như nào*), Tag tên bot.
 - **Nguồn thực tế:** Log Discord khóa học (Kênh `#hoi-dap` - ID: `log_doc_127`).
 - **Câu trả lời chuẩn (Ground Truth):**
   > "Để tích hợp AI log: (1) Cài thư viện `ailog` theo file hướng dẫn của repo mẫu, (2) Điền `AILOG_API_KEY` vào file `.env`, (3) Push code lên GitHub, hệ thống webhook sẽ tự động lấy log."
 
 ##### 7. Câu hỏi 7
-- **Nội dung nguyên văn:** `"@Trợ lý Kute chưa có team thì không nộp daily stand up à"`
+- **Nội dung nguyên văn:** `"/ask chưa có team thì không nộp daily stand up à"`
 - **Loại khiếm khuyết:** Cụt lủn, Văn nói thiếu thưa gửi, Trộn tiếng Anh (*daily stand up*), Tag tên bot.
 - **Nguồn thực tế:** Log Discord khóa học (Kênh `#hoi-dap` - ID: `log_doc_208`).
 - **Câu trả lời chuẩn (Ground Truth):**
