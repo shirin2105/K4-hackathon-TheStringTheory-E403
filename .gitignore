@@ -1,3 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE & OS
+.vscode/
+.idea/
 .DS_Store
-node_modules/
-*.env
+Thumbs.db
+
+# Flow diagram temp
+flow_diagram.mmd
+read_announcements.py
+test_multi_announcement.py
+*.html
