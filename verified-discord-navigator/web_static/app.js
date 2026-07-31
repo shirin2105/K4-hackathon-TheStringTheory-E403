@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
         titleText.textContent = `Hỏi: "${question}"`;
         descText.textContent = "Đang truy xuất thông báo từ kênh #thong-bao và chấm điểm nguồn...";
         fieldsContainer.innerHTML = '';
-        rejectedBox.innerHTML = '<div class="empty-state">Đang rà soát nguồn bị loại...</div>';
+        rejectedBox.innerHTML = '<div class="empty-state">Đang rà soát...</div>';
 
         try {
             const resp = await fetch('/api/query', {
@@ -88,9 +88,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 highlightPipelineStep(6, "LLM Synthesis hoàn tất (DeepSeek V3)");
 
                 statusBadge.className = 'status-badge status-conflict';
-                statusBadge.textContent = 'CONFLICT_RESOLVED (Đã Chọn Thông Báo Mới)';
+                statusBadge.textContent = 'VERIFIED (Đã Xác Minh & Loại Bản Cũ)';
                 borderColor.style.background = '#06b6d4';
-                titleText.textContent = "✅ Cập Nhật Thông Báo Mới Nhất (Đã Loại Bản Cũ)";
+                titleText.textContent = "✅ Thông Tin Đã Xác Minh";
                 descText.textContent = data.answer;
 
                 document.getElementById('btn-view-source').disabled = false;
@@ -103,15 +103,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusBadge.className = 'status-badge status-verified';
                 statusBadge.textContent = 'VERIFIED (Thông Tin Xác Minh)';
                 borderColor.style.background = '#10b981';
-                titleText.textContent = "✅ Câu Trả Lời Đã Xác Minh Từ #thong-bao";
+                titleText.textContent = "✅ Thông Tin Đã Xác Minh";
                 descText.textContent = data.answer;
 
                 document.getElementById('btn-view-source').disabled = false;
                 document.getElementById('btn-view-score').disabled = false;
             }
 
-            // Render Rejected Sources
-            if (data.rejected_sources && data.rejected_sources.length > 0) {
+            // Render Rejected Sources (Ultra-Clean UI: show clean state when verified)
+            if (data.status === 'INSUFFICIENT_EVIDENCE' && data.rejected_sources && data.rejected_sources.length > 0) {
                 rejectedBox.innerHTML = data.rejected_sources.map(r => `
                     <div class="rejected-item">
                         <div class="rej-title">❌ [${r.id}] (#${r.channel_name})</div>
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `).join('');
             } else {
-                rejectedBox.innerHTML = '<div class="empty-state">Không có thông báo mâu thuẫn bị loại</div>';
+                rejectedBox.innerHTML = '<div class="empty-state">✅ Đã tối ưu sạch & không hiển thị nguồn mâu thuẫn rác</div>';
             }
 
         } catch (err) {
