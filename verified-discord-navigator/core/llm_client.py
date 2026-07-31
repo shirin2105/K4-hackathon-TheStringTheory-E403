@@ -3,6 +3,7 @@ import json
 import urllib.request
 import urllib.error
 from typing import Dict, Any, Optional
+from datetime import datetime
 
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 
@@ -72,18 +73,24 @@ class DeepSeekClient:
         except Exception:
             return {}
 
-    def synthesize_answer(self, question: str, source_content: str, cohort: str) -> str:
+    def synthesize_answer(self, question: str, source_content: str, cohort: str, current_time_str: Optional[str] = None) -> str:
         """
-        Synthesizes a clear, comprehensive answer combining ALL high-confidence source announcements.
+        Synthesizes a clear, comprehensive answer combining ALL high-confidence source announcements,
+        with full awareness of current system time and message timestamps.
         """
+        if current_time_str is None:
+            current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         system_prompt = (
             "Bạn là trợ lý xác minh thông tin Discord khóa học. "
-            "Hãy đưa ra CÂU TRẢ LỜI CỤ THỂ, ĐẦY ĐỦ VÀ CHÍNH XÁC cho câu hỏi dựa vào TẤT CẢ các thông báo nguồn được cung cấp. "
-            "Nếu có nhiều sự kiện, mốc thời gian hoặc task (ví dụ deadline, roll gacha x10, làm bài lab, workshop, lọ tập thể), "
+            f"Thời điểm hiện tại của hệ thống: {current_time_str}.\n"
+            "Hãy đối chiếu thời điểm hiện tại với mốc thời gian (posted_at / timestamp) của các thông báo nguồn được cung cấp. "
+            "Đưa ra CÂU TRẢ LỜI CỤ THỂ, ĐẦY ĐỦ VÀ CHÍNH XÁC cho câu hỏi. "
+            "Nếu có nhiều sự kiện, mốc thời gian hoặc task (ví dụ deadline, roll gacha x10, làm bài lab, workshop), "
             "hãy LIỆT KÊ ĐẦY ĐỦ TẤT CẢ CÁC MỤC THÔNG BÁO MỚI NHẤT theo dạng danh sách rõ ràng. "
             "Tuyệt đối không bỏ sót thông tin nào từ các nguồn được cung cấp và không tự suy đoán ngoài nguồn."
         )
 
-        user_prompt = f"Câu hỏi: {question}\nNguồn chính thức ({cohort}):\n{source_content}"
+        user_prompt = f"Thời gian hiện tại: {current_time_str}\nCâu hỏi: {question}\nNguồn chính thức ({cohort}):\n{source_content}"
         ans = self._call_api(system_prompt, user_prompt, json_mode=False)
         return ans.strip() if ans else source_content

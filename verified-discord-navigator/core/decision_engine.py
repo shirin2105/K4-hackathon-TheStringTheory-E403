@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from typing import List, Optional
 from models.query import UserQuery
 from models.message import SourceMessage
@@ -36,6 +37,8 @@ class DecisionEngine:
         channel_id: str = "channel_demo",
         messages: Optional[List[SourceMessage]] = None
     ) -> DecisionResult:
+        current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         # 1. Intent Classification & Entity Extraction
         intent = self.intent_classifier.classify(question)
         entities = self.entity_extractor.extract(question)
@@ -98,15 +101,16 @@ class DecisionEngine:
         combined_content_blocks = []
         for idx, src in enumerate(high_scoring_sources[:5], 1):
             ch_name = f"#{src.channel_name}" if src.id.startswith("discord_") else src.channel_name
-            combined_content_blocks.append(f"--- Nguồn {idx} ({ch_name} - {src.posted_at[:16].replace('T', ' ')}): ---\n{src.content}")
+            combined_content_blocks.append(f"--- Nguồn {idx} ({ch_name} - Posted At: {src.posted_at[:19].replace('T', ' ')} UTC): ---\n{src.content}")
 
         context_content = "\n\n".join(combined_content_blocks)
 
-        # 7. LLM Answer Synthesis using Multi-Source Context
+        # 7. LLM Answer Synthesis using Multi-Source Context & System Timestamp
         llm_answer = self.llm_client.synthesize_answer(
             question=question,
             source_content=context_content,
-            cohort=query.cohort
+            cohort=query.cohort,
+            current_time_str=current_time_str
         )
 
         status = DecisionStatus.VERIFIED_WITH_CONFLICT_RESOLVED if has_conflict else DecisionStatus.VERIFIED
@@ -125,6 +129,7 @@ class DecisionEngine:
                 "score_breakdown": top_scored.score_breakdown,
                 "total_score": top_scored.score,
                 "query_params": query_dict,
+                "current_system_time": current_time_str,
                 "llm_engine": "DeepSeek-V3 (deepseek-chat)"
             }
         )
