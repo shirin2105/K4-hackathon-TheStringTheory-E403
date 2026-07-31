@@ -1,107 +1,46 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- TAB SWITCHING ---
-    const navItems = document.querySelectorAll('.nav-item');
-    const tabContents = document.querySelectorAll('.tab-content');
-
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            const targetTab = item.getAttribute('data-tab');
-            
-            navItems.forEach(n => n.classList.remove('active'));
-            tabContents.forEach(t => t.classList.remove('active'));
-            
-            item.classList.add('active');
-            document.getElementById(targetTab).classList.add('active');
-            
-            // Auto load tab data
-            if (targetTab === 'tab-announcements') loadAnnouncements();
-            if (targetTab === 'tab-benchmark') loadBenchmark();
-        });
-    });
-
-    // --- SCENARIO QUICK CHIPS ---
+    const chatStream = document.getElementById('chat-stream');
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
     const chipBtns = document.querySelectorAll('.chip-btn');
-    const queryInput = document.getElementById('user-query-input');
-    const queryForm = document.getElementById('query-form');
+    const tickerText = document.getElementById('ticker-text');
 
+    // Quick Scenario Chips
     chipBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const queryText = btn.getAttribute('data-query');
-            queryInput.value = queryText;
-            submitQuery(queryText);
+            if (queryText) {
+                chatInput.value = queryText;
+                handleUserSubmit(queryText);
+            }
         });
     });
 
-    queryForm.addEventListener('submit', (e) => {
+    // Form Submit
+    chatForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const queryText = queryInput.value.trim();
-        if (queryText) submitQuery(queryText);
+        const queryText = chatInput.value.trim();
+        if (queryText) {
+            handleUserSubmit(queryText);
+        }
     });
 
-    let currentResponseData = null;
+    async function handleUserSubmit(question) {
+        // Clear input
+        chatInput.value = '';
 
-    // --- MODAL SCORE BREAKDOWN HANDLERS ---
-    const scoreModal = document.getElementById('score-modal');
-    const modalCloseBtn = document.getElementById('modal-close-btn');
-    const btnViewScore = document.getElementById('btn-view-score');
-    const btnViewSource = document.getElementById('btn-view-source');
+        // 1. Append User Message Bubble
+        appendUserMessage(question);
 
-    if (btnViewScore) {
-        btnViewScore.addEventListener('click', () => {
-            if (!currentResponseData || !currentResponseData.verification_details) return;
-            const bd = currentResponseData.verification_details.score_breakdown || {};
-            const container = document.getElementById('modal-score-list');
-            
-            let html = '';
-            for (const [k, v] of Object.entries(bd)) {
-                const label = k.replace(/_/g, ' ').toUpperCase();
-                const formattedVal = (v >= 0 ? `+${v.toFixed(1)}` : `${v.toFixed(1)}`);
-                html += `<div class="score-row"><span class="name">${label}</span><span class="val">${formattedVal}</span></div>`;
-            }
-            html += `<div class="score-row" style="border-top:1px solid rgba(255,255,255,0.1); margin-top:8px; padding-top:10px;"><span class="name" style="font-weight:700; color:#fff;">TỔNG ĐIỂM SCORE</span><span class="val" style="color:var(--primary); font-size:16px;">${currentResponseData.verification_details.total_score || 0}</span></div>`;
-            
-            container.innerHTML = html;
-            scoreModal.classList.add('active');
-        });
-    }
+        // 2. Scroll to bottom
+        scrollToBottom();
 
-    if (modalCloseBtn) {
-        modalCloseBtn.addEventListener('click', () => scoreModal.classList.remove('active'));
-    }
-    if (scoreModal) {
-        scoreModal.addEventListener('click', (e) => {
-            if (e.target === scoreModal) scoreModal.classList.remove('active');
-        });
-    }
+        // 3. Update Pipeline Ticker Status
+        updateTicker('<i class="fa-solid fa-spinner fa-spin"></i> Đang truy xuất 1,050 nguồn thông tin & kiểm tra mốc thời gian...');
 
-    if (btnViewSource) {
-        btnViewSource.addEventListener('click', () => {
-            if (currentResponseData && currentResponseData.selected_source) {
-                const src = currentResponseData.selected_source;
-                alert(`Nguồn chính thức chọn:\nID: ${src.id}\nKênh: ${src.channel_name}\nNgười đăng: ${src.author_name}\nNội dung: ${src.content}`);
-            }
-        });
-    }
-
-    // --- SUBMIT QUERY TO BOT ENGINE ---
-    async function submitQuery(question) {
-        const statusBadge = document.getElementById('embed-status-badge');
-        const titleText = document.getElementById('embed-title-text');
-        const descText = document.getElementById('embed-desc-text');
-        const fieldsContainer = document.getElementById('embed-fields-container');
-        const rejectedBox = document.getElementById('rejected-list-box');
-        const borderColor = document.getElementById('embed-border-color');
-
-        // Reset Pipeline UI & show loading
-        resetPipelineSteps();
-        highlightPipelineStep(1, "Phân tích Intent & Entity...");
-        
-        statusBadge.className = 'status-badge status-idle';
-        statusBadge.textContent = 'Đang Xử Lý Pipeline...';
-        titleText.textContent = `Hỏi: "${question}"`;
-        descText.textContent = "Đang truy xuất thông báo từ kênh #thong-bao và chấm điểm nguồn...";
-        fieldsContainer.innerHTML = '';
-        rejectedBox.innerHTML = '<div class="empty-state">Đang rà soát...</div>';
+        // 4. Create Thinking Bot Bubble
+        const botBubble = appendThinkingMessage();
+        scrollToBottom();
 
         try {
             const resp = await fetch('/api/query', {
@@ -111,195 +50,101 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const data = await resp.json();
-            currentResponseData = data;
-            
-            // Step 2 & 3
-            highlightPipelineStep(2, "Đã truy xuất candidates từ official channels");
-            highlightPipelineStep(3, `Chấm điểm 8 yếu tố (Top score: ${data.verification_details?.total_score || 0})`);
 
-            // Step 4: Confidence Check
+            // Update ticker
             if (data.status === 'INSUFFICIENT_EVIDENCE') {
-                highlightPipelineStep(4, "Confidence < 60.0 — Kích hoạt Guardrail từ chối");
-                statusBadge.className = 'status-badge status-insufficient';
-                statusBadge.textContent = 'INSUFFICIENT_EVIDENCE (Đã Từ Chối)';
-                borderColor.style.background = '#f43f5e';
-                titleText.textContent = "❌ Chưa Có Bằng Chứng Chính Thức Đủ Tin Cậy";
-                descText.textContent = data.answer || "Bot từ chối suy đoán khi chưa tìm thấy thông báo xác minh.";
-                
-                document.getElementById('btn-view-source').disabled = true;
-                document.getElementById('btn-view-score').disabled = true;
+                updateTicker('<i class="fa-solid fa-shield-virus" style="color:var(--accent-rose)"></i> Confidence < 60.0 — Kích hoạt Guardrail từ chối an toàn');
             } else if (data.status === 'VERIFIED_WITH_CONFLICT_RESOLVED') {
-                highlightPipelineStep(4, "Confidence ≥ 60.0 — Vượt qua gate");
-                highlightPipelineStep(5, "Đã hủy bỏ thông báo cũ bị mâu thuẫn!");
-                highlightPipelineStep(6, "LLM Synthesis hoàn tất (DeepSeek V3)");
-
-                statusBadge.className = 'status-badge status-conflict';
-                statusBadge.textContent = 'VERIFIED (Đã Xác Minh & Loại Bản Cũ)';
-                borderColor.style.background = '#06b6d4';
-                titleText.textContent = "✅ Thông Tin Đã Xác Minh";
-                descText.textContent = data.answer;
-
-                document.getElementById('btn-view-source').disabled = false;
-                document.getElementById('btn-view-score').disabled = false;
+                updateTicker('<i class="fa-solid fa-circle-check" style="color:var(--accent-cyan)"></i> Đã xác minh & tự động loại bỏ thông báo cũ mâu thuẫn');
             } else {
-                highlightPipelineStep(4, "Confidence ≥ 60.0 — Vượt qua gate");
-                highlightPipelineStep(5, "Không có mâu thuẫn");
-                highlightPipelineStep(6, "LLM Synthesis hoàn tất");
-
-                statusBadge.className = 'status-badge status-verified';
-                statusBadge.textContent = 'VERIFIED (Thông Tin Xác Minh)';
-                borderColor.style.background = '#10b981';
-                titleText.textContent = "✅ Thông Tin Đã Xác Minh";
-                descText.textContent = data.answer;
-
-                document.getElementById('btn-view-source').disabled = false;
-                document.getElementById('btn-view-score').disabled = false;
+                updateTicker('<i class="fa-solid fa-circle-check" style="color:var(--accent-emerald)"></i> Đã xác minh chính xác từ nguồn thông báo');
             }
 
-            // Render Rejected Sources
-            if (data.status === 'INSUFFICIENT_EVIDENCE' && data.rejected_sources && data.rejected_sources.length > 0) {
-                rejectedBox.innerHTML = data.rejected_sources.map(r => `
-                    <div class="rejected-item">
-                        <div class="rej-title">❌ [${r.id}] (#${r.channel_name})</div>
-                        <div class="rej-reason">${r.reason}</div>
-                    </div>
-                `).join('');
-            } else {
-                rejectedBox.innerHTML = '<div class="empty-state">✅ Đã tối ưu sạch & không hiển thị nguồn mâu thuẫn rác</div>';
-            }
+            // Replace thinking bubble with verified embed
+            renderBotEmbed(botBubble, data);
+            scrollToBottom();
 
         } catch (err) {
             console.error(err);
-            statusBadge.textContent = 'Lỗi Kết Nối';
-            descText.textContent = "Không thể kết nối với động cơ DecisionEngine backend.";
+            updateTicker('<i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-rose)"></i> Lỗi kết nối máy chủ');
+            botBubble.querySelector('.embed-description').textContent = 'Không thể kết nối với động cơ Verified Navigator. Vui lòng kiểm tra lại.';
         }
     }
 
-    function resetPipelineSteps() {
-        for (let i = 1; i <= 6; i++) {
-            const step = document.getElementById(`step-${i}`);
-            if (step) step.classList.remove('active');
-        }
+    function appendUserMessage(text) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'chat-message user-msg';
+        msgDiv.innerHTML = `
+            <div class="msg-avatar">
+                <i class="fa-solid fa-user"></i>
+            </div>
+            <div class="msg-content">
+                <div class="user-text-bubble">${escapeHtml(text)}</div>
+            </div>
+        `;
+        chatStream.appendChild(msgDiv);
     }
 
-    function highlightPipelineStep(stepNum, text) {
-        const step = document.getElementById(`step-${stepNum}`);
-        if (step) {
-            step.classList.add('active');
-            if (text) {
-                const detail = document.getElementById(`step-${stepNum}-detail`);
-                if (detail) detail.textContent = text;
-            }
-        }
-    }
-
-    // --- TAB 2: LOAD OFFICIAL ANNOUNCEMENTS ---
-    async function loadAnnouncements() {
-        const container = document.getElementById('announcement-items-container');
-        try {
-            const resp = await fetch('/api/announcements');
-            const data = await resp.json();
-            
-            if (data.status === 'success' && data.announcements) {
-                container.innerHTML = data.announcements.map(ann => `
-                    <div class="glass-card announcement-item">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                            <span style="font-weight:700; color:var(--primary);">${ann.id} • ${ann.channel_name || '#thong-bao'}</span>
-                            <span class="status-badge ${ann.status === 'superseded' ? 'status-insufficient' : 'status-verified'}">${ann.status || 'active'}</span>
-                        </div>
-                        <p style="font-size:13px; color:var(--text-main); margin-bottom:8px;">${ann.content}</p>
-                        <div style="font-size:11px; color:var(--text-muted);">
-                            <i class="fa-regular fa-clock"></i> ${ann.posted_at || 'Mới nhất'} | Role: ${ann.author_role || 'official'} | Cohort: ${ann.cohort || 'ALL'}
-                        </div>
+    function appendThinkingMessage() {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'chat-message bot-msg';
+        msgDiv.innerHTML = `
+            <div class="msg-avatar">
+                <i class="fa-solid fa-robot"></i>
+            </div>
+            <div class="msg-content">
+                <div class="msg-author">
+                    <span class="author-name">Trợ Lý Navigator</span>
+                    <span class="bot-tag">BOT</span>
+                    <span class="msg-time">Đang xử lý...</span>
+                </div>
+                <div class="discord-embed">
+                    <div class="embed-border" style="background:#6366f1;"></div>
+                    <div class="embed-inner">
+                        <h4 class="embed-title"><i class="fa-solid fa-spinner fa-spin"></i> Đang xác minh dữ liệu...</h4>
+                        <div class="embed-description">Đang quét kho thông báo và chấm điểm nguồn chính thức...</div>
                     </div>
-                `).join('');
-            }
-        } catch (e) {
-            container.innerHTML = '<div class="empty-state">Không thể tải thông báo</div>';
+                </div>
+            </div>
+        `;
+        chatStream.appendChild(msgDiv);
+        return msgDiv;
+    }
+
+    function renderBotEmbed(msgDiv, data) {
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        msgDiv.querySelector('.msg-time').textContent = timeStr;
+
+        const embedBorder = msgDiv.querySelector('.embed-border');
+        const embedTitle = msgDiv.querySelector('.embed-title');
+        const embedDesc = msgDiv.querySelector('.embed-description');
+
+        if (data.status === 'INSUFFICIENT_EVIDENCE') {
+            embedBorder.style.background = 'var(--accent-rose)';
+            embedTitle.textContent = '⚠️ Chưa Đủ Bằng Chứng';
+            embedDesc.textContent = data.answer || 'Hiện chưa tìm thấy thông báo hoặc tài liệu chính thức đủ tin cậy để trả lời câu hỏi này.';
+        } else if (data.status === 'VERIFIED_WITH_CONFLICT_RESOLVED') {
+            embedBorder.style.background = 'var(--accent-cyan)';
+            embedTitle.textContent = '✅ Thông Tin Đã Xác Minh';
+            embedDesc.textContent = data.answer;
+        } else {
+            embedBorder.style.background = 'var(--accent-emerald)';
+            embedTitle.textContent = '✅ Thông Tin Đã Xác Minh';
+            embedDesc.textContent = data.answer;
         }
     }
 
-    // Form Add Announcement
-    const addForm = document.getElementById('add-announcement-form');
-    if (addForm) {
-        addForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const content = document.getElementById('ann-content').value.trim();
-            const channel = document.getElementById('ann-channel').value;
-            const cohort = document.getElementById('ann-cohort').value;
-
-            if (!content) return;
-
-            try {
-                const resp = await fetch('/api/announcements/add', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content, channel, cohort })
-                });
-
-                const res = await resp.json();
-                alert("Đã đăng thông báo mới thành công! Bây giờ bạn có thể quay lại tab Chat để thử câu hỏi và xem Conflict Resolution.");
-                document.getElementById('ann-content').value = '';
-                loadAnnouncements();
-            } catch (e) {
-                alert("Lỗi khi thêm thông báo");
-            }
-        });
+    function updateTicker(htmlContent) {
+        tickerText.innerHTML = htmlContent;
     }
 
-    // --- TAB 3: LOAD BENCHMARK 34 CASES ---
-    async function loadBenchmark() {
-        const tbody = document.getElementById('benchmark-table-body');
-        try {
-            const resp = await fetch('/api/benchmark');
-            const data = await resp.json();
-
-            if (data.status === 'success' && data.results) {
-                renderBenchmarkRows(data.results);
-
-                // Filter buttons
-                const filterBtns = document.querySelectorAll('.filter-btn');
-                filterBtns.forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        filterBtns.forEach(f => f.classList.remove('active'));
-                        btn.classList.add('active');
-                        const filterVal = btn.getAttribute('data-filter');
-                        
-                        if (filterVal === 'all') {
-                            renderBenchmarkRows(data.results);
-                        } else if (filterVal === 'set1') {
-                            renderBenchmarkRows(data.results.filter(r => r.group.includes('Bộ 1')));
-                        } else if (filterVal === 'set2') {
-                            renderBenchmarkRows(data.results.filter(r => r.group.includes('Bộ 2')));
-                        } else if (filterVal === 'set3') {
-                            renderBenchmarkRows(data.results.filter(r => r.group.includes('Bộ 3')));
-                        } else if (filterVal === 'set4') {
-                            renderBenchmarkRows(data.results.filter(r => r.group.includes('Bộ 4')));
-                        }
-                    });
-                });
-            }
-        } catch (e) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Không thể tải dữ liệu Benchmark</td></tr>';
-        }
+    function scrollToBottom() {
+        chatStream.scrollTop = chatStream.scrollHeight;
     }
 
-    function renderBenchmarkRows(list) {
-        const tbody = document.getElementById('benchmark-table-body');
-        tbody.innerHTML = list.map(r => `
-            <tr>
-                <td><strong>#${r.id}</strong></td>
-                <td><span style="font-size:11px; color:var(--accent-cyan); font-weight:600;">${r.group}</span></td>
-                <td style="max-width:320px; font-weight:500;">"${r.question}"</td>
-                <td><span class="status-badge ${r.status.includes('CONFLICT') ? 'status-conflict' : (r.status.includes('INSUFFICIENT') ? 'status-insufficient' : 'status-verified')}">${r.status}</span></td>
-                <td><strong>${(r.confidence * 100).toFixed(0)}%</strong></td>
-                <td>
-                    ${r.is_passed 
-                        ? '<span style="color:var(--accent-emerald); font-weight:700;"><i class="fa-solid fa-circle-check"></i> ĐẠT</span>' 
-                        : '<span style="color:var(--accent-rose); font-weight:700;"><i class="fa-solid fa-circle-xmark"></i> CHƯA ĐẠT</span>'
-                    }
-                </td>
-            </tr>
-        `).join('');
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 });
