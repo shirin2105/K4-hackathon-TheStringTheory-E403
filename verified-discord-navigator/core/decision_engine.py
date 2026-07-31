@@ -16,7 +16,7 @@ class DecisionEngine:
     """
     Main orchestrator for Verified Discord Navigator.
     Integrates NLP classification, retrieval, multi-factor ranking,
-    conflict detection, threshold enforcement, and LLM answer synthesis.
+    conflict detection, Top 5 timestamp synthesis, and DeepSeek LLM.
     """
 
     MIN_CONFIDENCE_SCORE = 60.0
@@ -74,7 +74,7 @@ class DecisionEngine:
         scored_sources = self.ranker.rank_sources(all_candidates, query)
         top_scored = scored_sources[0]
 
-        # 4. Confidence Threshold Gate
+        # 4. Confidence Threshold Gate (60.0 for official relevance)
         if top_scored.score < self.MIN_CONFIDENCE_SCORE:
             return DecisionResult(
                 status=DecisionStatus.INSUFFICIENT_EVIDENCE,
@@ -92,20 +92,24 @@ class DecisionEngine:
 
         # 5. Detect Conflicts & Superseded Messages
         selected_scored, rejected_sources, has_conflict = self.conflict_detector.detect_and_resolve(scored_sources, query)
-
         final_source = selected_scored.source if selected_scored else top_scored.source
-        confidence = float(min(0.99, max(0.60, top_scored.score / 100.0)))
 
-        # 6. Combine High-Scoring Official Candidates for Multi-Announcement Synthesis
-        high_scoring_sources = [s.source for s in scored_sources if s.score >= self.MIN_CONFIDENCE_SCORE]
+        # 6. Build Top 5 Timestamped Context Blocks for LLM Time-Aware Synthesis
+        high_scoring_sources = [s for s in scored_sources if s.score >= 50.0]
+        top_5_scored = high_scoring_sources[:5] if high_scoring_sources else scored_sources[:5]
+
         combined_content_blocks = []
-        for idx, src in enumerate(high_scoring_sources[:5], 1):
+        for idx, item in enumerate(top_5_scored, 1):
+            src = item.source
             ch_name = f"#{src.channel_name}" if src.id.startswith("discord_") else src.channel_name
-            combined_content_blocks.append(f"--- Nguồn {idx} ({ch_name} - Posted At: {src.posted_at[:19].replace('T', ' ')} UTC): ---\n{src.content}")
+            posted_str = src.posted_at[:19].replace("T", " ")
+            combined_content_blocks.append(
+                f"--- Nguồn {idx} (Kênh: {ch_name} | Đăng bởi: {src.author_name} [{src.author_role}] | Thời điểm đăng: {posted_str} UTC | Topic: {src.topic} | Score: {item.score:.1f}): ---\n{src.content}"
+            )
 
         context_content = "\n\n".join(combined_content_blocks)
 
-        # 7. LLM Answer Synthesis using Multi-Source Context & System Timestamp
+        # 7. LLM Time-Aware Answer Synthesis
         llm_answer = self.llm_client.synthesize_answer(
             question=question,
             source_content=context_content,
@@ -114,6 +118,9 @@ class DecisionEngine:
         )
 
         status = DecisionStatus.VERIFIED_WITH_CONFLICT_RESOLVED if has_conflict else DecisionStatus.VERIFIED
+        confidence = float(min(0.99, max(0.65, top_scored.score / 100.0)))
+        needs_mod = False
+        selected_source = final_source
 
         query_dict = query.model_dump() if hasattr(query, "model_dump") else query.dict()
 
@@ -121,15 +128,16 @@ class DecisionEngine:
             status=status,
             confidence=confidence,
             answer=llm_answer,
-            selected_source=final_source,
+            selected_source=selected_source,
             candidate_sources=[s.source for s in scored_sources],
             rejected_sources=rejected_sources,
-            needs_mod=False,
+            needs_mod=needs_mod,
             verification_details={
                 "score_breakdown": top_scored.score_breakdown,
                 "total_score": top_scored.score,
                 "query_params": query_dict,
                 "current_system_time": current_time_str,
+                "top_5_sources_used": len(top_5_scored),
                 "llm_engine": "DeepSeek-V3 (deepseek-chat)"
             }
         )

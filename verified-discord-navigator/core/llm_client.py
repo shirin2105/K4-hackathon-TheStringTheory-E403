@@ -32,7 +32,7 @@ class DeepSeekClient:
                 {"role": "user", "content": user_prompt}
             ],
             "temperature": 0.1,
-            "max_tokens": 512
+            "max_tokens": 600
         }
 
         if json_mode:
@@ -42,7 +42,7 @@ class DeepSeekClient:
         req = urllib.request.Request(DEEPSEEK_API_URL, data=data_bytes, headers=headers, method="POST")
 
         try:
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            with urllib.request.urlopen(req, timeout=12) as resp:
                 result = json.loads(resp.read().decode("utf-8"))
                 return result["choices"][0]["message"]["content"]
         except Exception as e:
@@ -75,22 +75,22 @@ class DeepSeekClient:
 
     def synthesize_answer(self, question: str, source_content: str, cohort: str, current_time_str: Optional[str] = None) -> str:
         """
-        Synthesizes a clear, comprehensive answer combining ALL high-confidence source announcements,
-        with full awareness of current system time and message timestamps.
+        Synthesizes answer from Top 5 timestamped candidate sources with full time-aware evaluation.
         """
         if current_time_str is None:
             current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         system_prompt = (
-            "Bạn là trợ lý xác minh thông tin Discord khóa học. "
-            f"Thời điểm hiện tại của hệ thống: {current_time_str}.\n"
-            "Hãy đối chiếu thời điểm hiện tại với mốc thời gian (posted_at / timestamp) của các thông báo nguồn được cung cấp. "
-            "Đưa ra CÂU TRẢ LỜI CỤ THỂ, ĐẦY ĐỦ VÀ CHÍNH XÁC cho câu hỏi. "
-            "Nếu có nhiều sự kiện, mốc thời gian hoặc task (ví dụ deadline, roll gacha x10, làm bài lab, workshop), "
-            "hãy LIỆT KÊ ĐẦY ĐỦ TẤT CẢ CÁC MỤC THÔNG BÁO MỚI NHẤT theo dạng danh sách rõ ràng. "
-            "Tuyệt đối không bỏ sót thông tin nào từ các nguồn được cung cấp và không tự suy đoán ngoài nguồn."
+            "Bạn là Trợ lý AI Xác minh Thông tin Discord Khóa học.\n"
+            f"THỜI ĐIỂM HIỆN TẠI CỦA HỆ THỐNG: {current_time_str}.\n\n"
+            "Nhiệm vụ của bạn:\n"
+            "1. Đọc và phân tích TOP 5 nguồn thông tin được cung cấp bên dưới (mỗi nguồn có thông tin timestamp mốc thời gian đăng bài và kênh phát hành).\n"
+            "2. SO SÁNH THỜI GIAN giữa mốc thời gian đăng bài (posted_at) và THỜI ĐIỂM HIỆN TẠI. Ưu tiên các thông báo mới nhất và lọc bỏ các thông tin đã cũ/bị thay thế.\n"
+            "3. Đưa ra CÂU TRẢ LỜI CỤ THỂ, ĐẦY ĐỦ VÀ RÕ RÀNG cho câu hỏi của học viên. Liệt kê đầy đủ các sự kiện, hạn nộp hoặc hoạt động nếu có nhiều mục.\n"
+            "4. Nếu trong các nguồn KHÔNG CÓ THÔNG TIN liên quan đến câu hỏi, hãy thông báo ngắn gọn chưa có thông tin chính thức trong nguồn được cung cấp.\n"
+            "5. Trả lời chính xác 100% dựa vào dữ liệu nguồn, tuyệt đối không bịa ra thông tin không có trong nguồn."
         )
 
-        user_prompt = f"Thời gian hiện tại: {current_time_str}\nCâu hỏi: {question}\nNguồn chính thức ({cohort}):\n{source_content}"
+        user_prompt = f"Thời điểm hiện tại: {current_time_str}\nCâu hỏi của học viên: {question}\nCohort: {cohort}\n\nTOP 5 NGUỒN TRÍCH XUẤT HÀNG ĐẦU:\n{source_content}"
         ans = self._call_api(system_prompt, user_prompt, json_mode=False)
         return ans.strip() if ans else source_content
