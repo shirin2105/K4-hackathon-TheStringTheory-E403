@@ -17,9 +17,18 @@ class DecisionEngine:
     Main orchestrator for Verified Discord Navigator.
     Integrates NLP classification, retrieval, multi-factor ranking,
     conflict detection, Top 5 timestamp synthesis, and DeepSeek LLM.
+    Enforces 3 Strict User Rules:
+    1. Refuse out-of-scope non-course queries.
+    2. Correct & Complete, ultra-concise, no filler/greetings.
+    3. No fake/document links (only official Discord message URLs).
     """
 
     MIN_CONFIDENCE_SCORE = 60.0
+
+    OUT_OF_SCOPE_KEYWORDS = [
+        "thời tiết", "thời tiết hôm nay", "thủ đô", "mấy giờ rồi", "ăn cơm chưa",
+        "thời tiết ngày mai", "chứng khoán", "bóng đá", "thời sự", "xổ số"
+    ]
 
     def __init__(self, data_path: Optional[str] = None):
         self.intent_classifier = IntentClassifier()
@@ -38,6 +47,20 @@ class DecisionEngine:
         messages: Optional[List[SourceMessage]] = None
     ) -> DecisionResult:
         current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        q_lower = question.lower().strip()
+
+        # Rule 1: Guardrail for explicit out-of-scope non-course questions
+        if any(term in q_lower for term in self.OUT_OF_SCOPE_KEYWORDS):
+            return DecisionResult(
+                status=DecisionStatus.INSUFFICIENT_EVIDENCE,
+                confidence=0.0,
+                answer="Xin lỗi, tôi là Trợ lý Khóa học và chỉ hỗ trợ giải đáp các thắc mắc, lịch trình, bài tập và quy định liên quan đến khóa học.",
+                selected_source=None,
+                candidate_sources=[],
+                rejected_sources=[],
+                needs_mod=False,
+                verification_details={"reason": "Out of scope non-course query"}
+            )
 
         # 1. Intent Classification & Entity Extraction
         intent = self.intent_classifier.classify(question)
