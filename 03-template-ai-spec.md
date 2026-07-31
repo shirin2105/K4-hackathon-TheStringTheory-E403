@@ -19,9 +19,9 @@ Loại: [x] Tối ưu tính năng có sẵn  [ ] Tính năng mới
 - Bảng impact ≥3 ứng viên:
   | Ứng viên | Bao nhiêu người | Tần suất | Mỗi lần tốn gì | Khả thi |
   |---|---|---|---|---|
-  | 1. Bot tổng hợp & trả lời thẳng từ kênh thông báo chính thức | ~10.000 học viên K3 & K4 | 5–10 lần/ngày/người | 2–5 phút tự tìm + rủi ro đọc thông báo sai | Cao |
-  | 2. Bot phát hiện mâu thuẫn giữa các thông báo cùng topic | ~10.000 học viên K3 & K4 | Khi có thông báo cập nhật | Đọc nhầm thông báo cũ, sai deadline | Cao |
-  | 3. Bot tự động reply bằng cách copy nguyên thông báo | ~10.000 học viên K3 & K4 | 5–10 lần/ngày/người | Phản hồi dài, không chọn lọc, trả cả thông báo cũ | Thấp (chưa có xử lý mâu thuẫn) |
+  | 1. Bot tổng hợp & trả lời thẳng từ kênh thông báo chính t1hức | ~1.000 học viên K3 & K4 | 5–10 lần/ngày/người | 2–5 phút tự tìm + rủi ro đọc thông báo sai | Cao |
+  | 2. Bot phát hiện mâu thuẫn giữa các thông báo cùng topic | ~1.000 học viên K3 & K4 | Khi có thông báo cập nhật | Đọc nhầm thông báo cũ, sai deadline | Cao |
+  | 3. Bot tự động reply bằng cách copy nguyên thông báo | ~1.000 học viên K3 & K4 | 5–10 lần/ngày/người | Phản hồi dài, không chọn lọc, trả cả thông báo cũ | Thấp (chưa có xử lý mâu thuẫn) |
 - Ứng viên ĐÃ LOẠI + vì sao:
   - (3) Copy nguyên thông báo: Không phân biệt thông báo mới/cũ, không tổng hợp nội dung liên quan — học viên vẫn phải tự đọc toàn bộ thông báo dài.
 - Ứng viên CHỌN + vì sao:
