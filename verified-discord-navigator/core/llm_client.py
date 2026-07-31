@@ -35,7 +35,7 @@ class DeepSeekClient:
                 {"role": "user", "content": user_prompt}
             ],
             "temperature": 0.1,
-            "max_tokens": 500
+            "max_tokens": 1000
         }
 
         if json_mode:
@@ -45,7 +45,7 @@ class DeepSeekClient:
         req = urllib.request.Request(DEEPSEEK_API_URL, data=data_bytes, headers=headers, method="POST")
 
         try:
-            with urllib.request.urlopen(req, timeout=12) as resp:
+            with urllib.request.urlopen(req, timeout=15) as resp:
                 result = json.loads(resp.read().decode("utf-8"))
                 return result["choices"][0]["message"]["content"]
         except Exception as e:

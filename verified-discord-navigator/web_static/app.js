@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateTicker('<i class="fa-solid fa-circle-check" style="color:var(--accent-emerald)"></i> Đã xác minh chính xác từ nguồn thông báo');
             }
 
-            // Replace thinking bubble with verified embed
+            // Replace thinking bubble with verified embed formatted exactly like Discord
             renderBotEmbed(botBubble, data);
             scrollToBottom();
 
@@ -122,16 +122,41 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.status === 'INSUFFICIENT_EVIDENCE') {
             embedBorder.style.background = 'var(--accent-rose)';
             embedTitle.textContent = '⚠️ Chưa Đủ Bằng Chứng';
-            embedDesc.textContent = data.answer || 'Hiện chưa tìm thấy thông báo hoặc tài liệu chính thức đủ tin cậy để trả lời câu hỏi này.';
+            embedDesc.innerHTML = renderDiscordMarkdown(data.answer || 'Hiện chưa tìm thấy thông báo hoặc tài liệu chính thức đủ tin cậy để trả lời câu hỏi này.');
         } else if (data.status === 'VERIFIED_WITH_CONFLICT_RESOLVED') {
             embedBorder.style.background = 'var(--accent-cyan)';
             embedTitle.textContent = '✅ Thông Tin Đã Xác Minh';
-            embedDesc.textContent = data.answer;
+            embedDesc.innerHTML = renderDiscordMarkdown(data.answer);
         } else {
             embedBorder.style.background = 'var(--accent-emerald)';
             embedTitle.textContent = '✅ Thông Tin Đã Xác Minh';
-            embedDesc.textContent = data.answer;
+            embedDesc.innerHTML = renderDiscordMarkdown(data.answer);
         }
+    }
+
+    function renderDiscordMarkdown(text) {
+        if (!text) return '';
+        let html = text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+        
+        // Bold: **text** -> <strong>text</strong>
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        
+        // Italic: *text* -> <em>text</em>
+        html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+        // Bullet lists: - item -> • item
+        html = html.replace(/^- (.*$)/gim, '• $1');
+        
+        // Links: [label](url) -> <a href="url" target="_blank">label</a>
+        html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color:var(--accent-cyan); text-decoration:underline;">$1</a>');
+        
+        // Newlines -> <br>
+        html = html.replace(/\n/g, '<br>');
+        
+        return html;
     }
 
     function updateTicker(htmlContent) {
