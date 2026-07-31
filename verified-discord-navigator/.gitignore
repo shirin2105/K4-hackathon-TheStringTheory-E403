@@ -5,4 +5,6 @@ __pycache__/
 debug_*.py
 test_read_channel.py
 test_laptop_query.py
+test_multi_announcement.py
+read_announcements.py
 flow_diagram.mmd

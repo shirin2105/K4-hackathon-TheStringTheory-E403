@@ -74,15 +74,16 @@ class DeepSeekClient:
 
     def synthesize_answer(self, question: str, source_content: str, cohort: str) -> str:
         """
-        Synthesizes a clear, ultra-specific answer directly from verified source message.
+        Synthesizes a clear, comprehensive answer combining ALL high-confidence source announcements.
         """
         system_prompt = (
             "Bạn là trợ lý xác minh thông tin Discord khóa học. "
-            "Hãy đưa ra CÂU TRẢ LỜI CỤ THỂ, TRỰC TIẾP và RÕ RÀNG cho câu hỏi dựa vào thông báo nguồn được cung cấp. "
-            "Đưa thẳng kết quả (ví dụ ngày giờ/deadline/link) lên dòng đầu tiên. "
-            "Ngắn gọn dưới 40 từ, chính xác 100% theo nguồn, tuyệt đối không suy đoán."
+            "Hãy đưa ra CÂU TRẢ LỜI CỤ THỂ, ĐẦY ĐỦ VÀ CHÍNH XÁC cho câu hỏi dựa vào TẤT CẢ các thông báo nguồn được cung cấp. "
+            "Nếu có nhiều sự kiện, mốc thời gian hoặc task (ví dụ deadline, roll gacha x10, làm bài lab, workshop, lọ tập thể), "
+            "hãy LIỆT KÊ ĐẦY ĐỦ TẤT CẢ CÁC MỤC THÔNG BÁO MỚI NHẤT theo dạng danh sách rõ ràng. "
+            "Tuyệt đối không bỏ sót thông tin nào từ các nguồn được cung cấp và không tự suy đoán ngoài nguồn."
         )
 
-        user_prompt = f"Câu hỏi: {question}\nNguồn chính thức ({cohort}): {source_content}"
+        user_prompt = f"Câu hỏi: {question}\nNguồn chính thức ({cohort}):\n{source_content}"
         ans = self._call_api(system_prompt, user_prompt, json_mode=False)
         return ans.strip() if ans else source_content

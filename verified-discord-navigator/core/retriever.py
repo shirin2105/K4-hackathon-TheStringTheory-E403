@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import re
 from typing import List, Optional
 from models.message import SourceMessage
 from models.query import UserQuery
@@ -23,7 +24,6 @@ class SourceRetriever:
         self.extractor = EntityExtractor()
         self.classifier = IntentClassifier()
 
-        # In-memory cache for live channel messages to prevent rate-limits and excessive API calls
         self._live_cache: List[SourceMessage] = []
         self._last_fetch_time: float = 0
         self._cache_ttl_seconds: float = 60.0
@@ -107,29 +107,35 @@ class SourceRetriever:
         official_channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID", "1532306560871567390").strip()
 
         candidates = []
-        q_text = query.question.lower()
+        clean_q_text = re.sub(r"[^\w\s]", " ", query.question.lower())
         q_topic = query.topic.lower() if query.topic else None
 
-        # Check if query specifically asks for announcements or schedule updates
-        is_general_announcement_query = any(term in q_text for term in ["thông báo", "mới nhất", "tin mới", "có gì mới", "lịch học"])
+        # Check if query asks for announcements, schedule, or daily tasks
+        schedule_announcement_terms = [
+            "thông báo", "mới nhất", "tin mới", "có gì mới", "hôm nay", "tối nay",
+            "ngày mai", "lịch", "lịch học", "làm gì", "phải làm", "nhiệm vụ", "bài tập"
+        ]
+        is_general_announcement_query = any(term in clean_q_text for term in schedule_announcement_terms)
 
-        stop_words = {"là", "gì", "ở", "đâu", "nào", "có", "không", "cho", "tôi", "xin", "hỏi", "mấy", "giờ", "bao", "nhiêu", "thì", "được", "với", "như"}
-        query_keywords = [w for w in q_text.split() if w not in stop_words and len(w) > 1]
+        stop_words = {
+            "là", "gì", "ở", "đâu", "nào", "có", "không", "cho", "tôi", "xin",
+            "hỏi", "mấy", "giờ", "bao", "nhiêu", "thì", "được", "với", "như", "hay",
+            "cần", "tự", "của", "và", "học", "viên", "bạn", "mình", "anh", "em",
+            "các", "về", "trong", "trên", "từ", "khoá", "khóa", "sử", "dụng", "áp",
+            "dụng", "này", "đó", "đã", "đang", "theo", "sau", "trước", "bằng"
+        }
+        query_keywords = [w for w in clean_q_text.split() if w not in stop_words and len(w) > 1]
 
         for msg in messages:
-            # Enforce strict origin filter: Must be from DB or Official Channel
             if msg.id.startswith("discord_") and msg.channel_id != official_channel_id:
                 continue
 
             msg_topic = msg.topic.lower()
             msg_content = msg.content.lower()
 
-            # Calculate keyword overlap
             overlap = sum(1 for kw in query_keywords if kw in msg_content or kw in msg_topic)
 
-            # STRICT GATEWAY FOR LIVE ANNOUNCEMENT MESSAGES:
-            # If candidate is a live announcement from 1532306560871567390:
-            # ONLY include it if the user specifically asked for announcements OR it has content keyword overlap!
+            # Strict gateway for live channel messages
             if msg.channel_id == official_channel_id:
                 if not is_general_announcement_query and overlap == 0 and not (q_topic and q_topic in msg_topic):
                     continue

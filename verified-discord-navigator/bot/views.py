@@ -11,7 +11,7 @@ class VerifiedResultView(discord.ui.View):
         super().__init__(timeout=300)
         self.result = result
 
-        if result.selected_source and result.selected_source.message_url:
+        if result.selected_source and result.selected_source.message_url and (result.selected_source.message_url.startswith("http") or result.selected_source.message_url.startswith("file")):
             self.add_item(discord.ui.Button(
                 label="Mở nguồn",
                 url=result.selected_source.message_url,
@@ -40,7 +40,7 @@ class ConflictResultView(discord.ui.View):
         super().__init__(timeout=300)
         self.result = result
 
-        if result.selected_source and result.selected_source.message_url:
+        if result.selected_source and result.selected_source.message_url and (result.selected_source.message_url.startswith("http") or result.selected_source.message_url.startswith("file")):
             self.add_item(discord.ui.Button(
                 label="Mở nguồn chính",
                 url=result.selected_source.message_url,
@@ -54,15 +54,20 @@ class ConflictResultView(discord.ui.View):
             return
 
         lines = ["🔎 **Danh sách các nguồn mâu thuẫn bị loại:**"]
-        for idx, rej in enumerate(self.result.rejected_sources, 1):
+        for idx, rej in enumerate(self.result.rejected_sources[:5], 1):
             src = rej.source
+            ch_name = f"#{src.channel_name}" if src.id.startswith("discord_") else src.channel_name
             lines.append(
-                f"{idx}. **[{src.id}]** ({src.posted_at[:10]} - #{src.channel_name})\n"
+                f"{idx}. **[{src.id}]** ({src.posted_at[:10]} - {ch_name})\n"
                 f"   • Nội dung: \"{src.content[:60]}...\"\n"
                 f"   • **Lý do loại:** {rej.reason}"
             )
 
-        await interaction.response.send_message("\n\n".join(lines), ephemeral=True)
+        output_text = "\n\n".join(lines)
+        if len(output_text) > 1900:
+            output_text = output_text[:1900] + "\n...(Đã cắt gọn để vừa giới hạn Discord)"
+
+        await interaction.response.send_message(output_text, ephemeral=True)
 
 
 class InsufficientResultView(discord.ui.View):
@@ -79,7 +84,6 @@ class InsufficientResultView(discord.ui.View):
         req_id = self.result.verification_details.get('query_params', {}).get('request_id', 'REQ-MOD')
         q_text = self.result.verification_details.get('query_params', {}).get('question', 'N/A')
 
-        # Post ticket to real mod channel if MOD_CHANNEL_ID is set
         mod_channel_id = os.getenv("MOD_CHANNEL_ID", "").strip()
         ticket_posted = False
 
@@ -123,7 +127,12 @@ class InsufficientResultView(discord.ui.View):
             return
 
         lines = ["📋 **Các nguồn liên quan tìm thấy (chưa đủ độ tin cậy):**"]
-        for src in candidates:
-            lines.append(f"• **[{src.id}]** (#{src.channel_name}): \"{src.content}\" (Cohort: {src.cohort})")
+        for idx, src in enumerate(candidates[:5], 1):
+            ch_name = f"#{src.channel_name}" if src.id.startswith("discord_") else src.channel_name
+            lines.append(f"{idx}. **[{src.id}]** ({ch_name}): \"{src.content[:80]}\" (Cohort: {src.cohort})")
 
-        await interaction.response.send_message("\n".join(lines), ephemeral=True)
+        output_text = "\n".join(lines)
+        if len(output_text) > 1900:
+            output_text = output_text[:1900] + "\n...(Đã cắt gọn để vừa giới hạn Discord)"
+
+        await interaction.response.send_message(output_text, ephemeral=True)

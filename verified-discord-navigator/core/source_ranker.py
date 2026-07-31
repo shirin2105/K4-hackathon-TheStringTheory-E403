@@ -48,6 +48,13 @@ class SourceRanker:
         "thông báo", "thông báo khóa học", "tri thức khóa học", "n/a", "none", "unknown", ""
     }
 
+    SCHEDULE_ANNOUNCEMENT_TERMS = [
+        "thông báo", "mới nhất", "tin mới", "có gì mới", "hôm nay", "tối nay",
+        "ngày mai", "lịch", "lịch học", "làm gì", "phải làm", "nhiệm vụ", "bài tập"
+    ]
+
+    TODAY_TERMS = ["hôm nay", "tối nay", "sáng nay", "chiều nay"]
+
     def score_source(
         self,
         source: SourceMessage,
@@ -91,11 +98,22 @@ class SourceRanker:
             topic_score = 0
         breakdown["topic_match_score"] = float(topic_score)
 
-        # 4. Date Reference Match Score
+        # 4. Date Reference Match Score (Includes date formats like 30/7, 30/07 and live announcements)
+        clean_q_text = re.sub(r"[^\w\s]", " ", query.question.lower())
         q_date = query.date_reference
+        if not q_date:
+            if any(term in clean_q_text for term in self.TODAY_TERMS):
+                q_date = "hôm nay"
+
         if q_date:
             q_date_lower = q_date.lower()
-            if q_date_lower in msg_content:
+            if q_date_lower in self.TODAY_TERMS:
+                today_terms = ["hôm nay", "tối nay", "sáng nay", "chiều nay", "30/7", "30/07", "30-07", "31/7", "31/07"]
+                if any(term in msg_content for term in today_terms) or source.id.startswith("discord_"):
+                    date_score = 15
+                else:
+                    date_score = 0
+            elif q_date_lower in msg_content:
                 date_score = 15
             else:
                 date_score = -60
@@ -123,10 +141,9 @@ class SourceRanker:
         status_score = self.STATUS_WEIGHTS.get(source.status, 0)
         breakdown["active_status_score"] = float(status_score)
 
-        # 8. Query Relevance Guardrail (Clean exact word token matching)
-        clean_q_text = re.sub(r"[^\w\s]", " ", query.question.lower())
+        # 8. Query Relevance Guardrail
         query_words = [w for w in clean_q_text.split() if w not in self.STOP_WORDS and len(w) > 1]
-        is_general_announcement_query = any(term in clean_q_text for term in ["thông báo", "mới nhất", "tin mới", "có gì mới"])
+        is_general_announcement_query = any(term in clean_q_text for term in self.SCHEDULE_ANNOUNCEMENT_TERMS)
 
         if query_words and not is_general_announcement_query:
             content_tokens = set(re.sub(r"[^\w\s]", " ", msg_content).split())
