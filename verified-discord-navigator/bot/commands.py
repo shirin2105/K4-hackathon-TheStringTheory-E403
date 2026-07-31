@@ -17,10 +17,10 @@ class NavigatorCommands(commands.Cog):
 
     async def get_all_sources(self):
         """
-        Retrieves live messages from official announcement channel 1527920171963125953
+        Retrieves live messages from official announcement channel 1532306560871567390
         combined with course documents database.
         """
-        ann_channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID", "1527920171963125953").strip()
+        ann_channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID", "1532306560871567390").strip()
         live_messages = []
         if ann_channel_id:
             live_messages = await self.engine.retriever.fetch_live_messages_async(self.bot, ann_channel_id)
@@ -73,7 +73,7 @@ class NavigatorCommands(commands.Cog):
         embed.add_field(name="Động cơ Scoring", value="8-Factor DecisionEngine", inline=True)
         embed.add_field(name="Ngưỡng Tin Cậy (Gate)", value="≥ 60.0 Score", inline=True)
         embed.add_field(name="Mẫu Giám Sát", value="Top 5 Candidates", inline=True)
-        embed.add_field(name="Kênh Thông Báo Live", value="<#1527920171963125953>", inline=False)
+        embed.add_field(name="Kênh Thông Báo Live", value="<#1532306560871567390>", inline=False)
         embed.set_footer(text="Verified Discord Navigator • AI20K Build Phase")
 
         await interaction.response.send_message(embed=embed, ephemeral=True)

@@ -68,7 +68,7 @@ def create_bot(enable_message_content: bool = True) -> tuple[commands.Bot, Decis
                 return
 
             intent = engine.classifier.classify(clean_question)
-            ann_channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID", "1527920171963125953").strip()
+            ann_channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID", "1532306560871567390").strip()
 
             live_messages = []
             if ann_channel_id and intent in ["schedule", "workshop", "deadline", "unknown"]:

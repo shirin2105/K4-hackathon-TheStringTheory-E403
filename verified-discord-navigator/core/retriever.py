@@ -12,7 +12,7 @@ from core.intent_classifier import IntentClassifier
 class SourceRetriever:
     """
     Retriever for official announcement messages EXCLUSIVELY from:
-    1. Official Announcement Channel (`ANNOUNCEMENT_CHANNEL_ID: 1527920171963125953`)
+    1. Official Announcement Channel (`ANNOUNCEMENT_CHANNEL_ID: 1532306560871567390`)
     2. Official Course Documents & Handbook DB (`data/mock_messages.json`)
     """
 
@@ -37,10 +37,10 @@ class SourceRetriever:
 
     async def fetch_live_messages_async(self, bot, channel_id: str, limit: int = 50) -> List[SourceMessage]:
         """
-        Fetches live messages EXCLUSIVELY from official announcement channel ID 1527920171963125953.
+        Fetches live messages EXCLUSIVELY from official announcement channel ID 1532306560871567390.
         Uses 60-second in-memory cache to prevent Discord API rate-limiting.
         """
-        target_channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID", "1527920171963125953").strip()
+        target_channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID", "1532306560871567390").strip()
 
         if not channel_id or str(channel_id).strip() != target_channel_id:
             return []
