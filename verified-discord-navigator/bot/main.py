@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import asyncio
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -72,7 +73,7 @@ def create_bot(enable_message_content: bool = True) -> tuple[commands.Bot, Decis
 
             try:
                 async with message.channel.typing():
-                    intent = engine.classifier.classify(clean_question)
+                    intent = engine.intent_classifier.classify(clean_question)
                     ann_channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID", "1532306560871567390").strip()
 
                     live_messages = []
@@ -85,11 +86,12 @@ def create_bot(enable_message_content: bool = True) -> tuple[commands.Bot, Decis
                     db_messages = engine.retriever.load_all_messages()
                     all_messages = live_messages + db_messages if live_messages else db_messages
 
-                    result = engine.process_query(
+                    result = await asyncio.to_thread(
+                        engine.process_query,
                         question=clean_question,
                         user_id=str(message.author.id),
                         channel_id=str(message.channel.id),
-                        messages=all_messages
+                        messages=all_messages,
                     )
 
                     embed = create_result_embed(result)
@@ -102,8 +104,11 @@ def create_bot(enable_message_content: bool = True) -> tuple[commands.Bot, Decis
 
                     await message.channel.send(embed=embed, view=view)
             except Exception as err:
-                logger.error(f"Error handling message: {err}")
-                await message.channel.send("⚠️ Có lỗi xảy ra trong quá trình xử lý câu hỏi. Vui lòng thử lại sau ít phút.")
+                logger.exception("Error handling message: %s", err)
+                try:
+                    await message.channel.send("⚠️ Có lỗi xảy ra trong quá trình xử lý câu hỏi. Vui lòng thử lại sau ít phút.")
+                except Exception:
+                    logger.exception("Failed to send mention/DM error response")
             return
 
         await bot.process_commands(message)

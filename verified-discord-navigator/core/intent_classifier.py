@@ -22,6 +22,12 @@ INTENT_KEYWORDS = {
 
 INTENT_PRIORITY = ["document", "deadline", "submission", "schedule", "workshop", "regulation"]
 
+COURSE_SCOPE_TERMS = {
+    "ai20k", "build phase", "khóa", "khoá", "cohort", "mentor", "duty",
+    "office hours", "workshop", "weekly", "daily", "gate", "checkpoint",
+    "cp", "xp", "rank", "discord", "thông báo", "thong bao",
+}
+
 
 class IntentClassifier:
     """
@@ -47,3 +53,8 @@ class IntentClassifier:
                 return intent
 
         return list(matched_intents)[0]
+
+    def is_course_question(self, text: str, intent: str | None = None) -> bool:
+        """Return whether a question is within the course announcement/knowledge scope."""
+        normalized_text = text.lower()
+        return any(term in normalized_text for term in COURSE_SCOPE_TERMS)

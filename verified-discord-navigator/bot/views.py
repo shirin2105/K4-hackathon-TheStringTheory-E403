@@ -11,7 +11,12 @@ class VerifiedResultView(discord.ui.View):
         super().__init__(timeout=300)
         self.result = result
 
-        if result.selected_source and result.selected_source.message_url and (result.selected_source.message_url.startswith("http") or result.selected_source.message_url.startswith("file")):
+        if (
+            result.should_show_source_link
+            and result.selected_source
+            and result.selected_source.message_url
+            and result.selected_source.message_url.startswith(("http://", "https://"))
+        ):
             self.add_item(discord.ui.Button(
                 label="Mở nguồn",
                 url=result.selected_source.message_url,
@@ -40,7 +45,12 @@ class ConflictResultView(discord.ui.View):
         super().__init__(timeout=300)
         self.result = result
 
-        if result.selected_source and result.selected_source.message_url and (result.selected_source.message_url.startswith("http") or result.selected_source.message_url.startswith("file")):
+        if (
+            result.should_show_source_link
+            and result.selected_source
+            and result.selected_source.message_url
+            and result.selected_source.message_url.startswith(("http://", "https://"))
+        ):
             self.add_item(discord.ui.Button(
                 label="Mở nguồn chính",
                 url=result.selected_source.message_url,

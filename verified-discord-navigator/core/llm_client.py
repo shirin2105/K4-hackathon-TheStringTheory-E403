@@ -19,10 +19,11 @@ class DeepSeekClient:
 
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
-        if not self.api_key:
-            self.api_key = "sk-eaca2234980f48b09ebbf5121c6c0b82"
 
     def _call_api(self, system_prompt: str, user_prompt: str, json_mode: bool = False) -> str:
+        if not self.api_key:
+            return ""
+
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}"
@@ -100,4 +101,4 @@ class DeepSeekClient:
 
         user_prompt = f"Thời điểm hiện tại: {current_time_str}\nCâu hỏi: {question}\nCohort: {cohort}\n\nTOP NGUỒN TRÍCH XUẤT:\n{source_content}"
         ans = self._call_api(system_prompt, user_prompt, json_mode=False)
-        return ans.strip() if ans else source_content
+        return ans.strip() if ans else ""

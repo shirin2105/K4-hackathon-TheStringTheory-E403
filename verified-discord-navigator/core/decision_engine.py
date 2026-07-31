@@ -27,6 +27,9 @@ class DecisionEngine:
     """
 
     MIN_CONFIDENCE_SCORE = 60.0
+    LINK_REQUEST_TERMS = ("link", "nguồn", "source", "thông báo", "xem chi tiết")
+    ACTIONABLE_ANNOUNCEMENT_INTENTS = {"deadline", "schedule", "workshop"}
+    DOCUMENT_ACTION_INTENTS = {"document", "submission"}
 
     def __init__(self, data_path: Optional[str] = None, api_key: Optional[str] = None):
         self.intent_classifier = IntentClassifier()
@@ -48,6 +51,17 @@ class DecisionEngine:
 
         # 1. Intent Classification & Entity Extraction
         intent = self.intent_classifier.classify(question)
+        if not self.intent_classifier.is_course_question(question, intent):
+            return DecisionResult(
+                status=DecisionStatus.INSUFFICIENT_EVIDENCE,
+                confidence=0.0,
+                answer="Bot chỉ hỗ trợ hỏi đáp thông báo và thông tin thuộc khóa học từ nguồn dữ liệu đã xác minh.",
+                selected_source=None,
+                candidate_sources=[],
+                rejected_sources=[],
+                needs_mod=False,
+                verification_details={"reason": "unsupported_course_question"},
+            )
         entities = self.entity_extractor.extract(question)
 
         query = UserQuery(
@@ -135,6 +149,12 @@ class DecisionEngine:
             cohort=query.cohort,
             current_time_str=current_time_str
         )
+        used_fallback = not bool(llm_answer)
+        if used_fallback:
+            llm_answer = (
+                "Hệ thống AI đang tạm thời không phản hồi nên chưa thể xác minh cách diễn giải thông báo. "
+                "Vui lòng thử lại sau hoặc chuyển Mod để kiểm tra nguồn chính thức."
+            )
 
         refusal_phrases = [
             "xin lỗi, tôi là trợ lý khóa học", "không tìm thấy thông tin",
@@ -142,7 +162,7 @@ class DecisionEngine:
         ]
         is_refusal = any(phrase in llm_answer.lower() for phrase in refusal_phrases)
 
-        if is_refusal:
+        if used_fallback or is_refusal:
             status = DecisionStatus.INSUFFICIENT_EVIDENCE
             confidence = 0.20
             needs_mod = True
@@ -170,10 +190,38 @@ class DecisionEngine:
             candidate_sources=[s.source for s in scored_sources],
             rejected_sources=rejected_sources,
             needs_mod=needs_mod,
+            should_show_source_link=self._should_show_source_link(
+                question=question,
+                intent=intent,
+                status=status,
+                source=selected_source,
+                has_conflict=has_conflict,
+            ),
             verification_details={
                 "total_score": top_scored.score,
                 "score_breakdown": top_scored.score_breakdown,
                 "has_conflict": has_conflict,
-                "synthesized_by": "DeepSeek-V3 (deepseek-chat)"
+                "synthesized_by": "safe outage fallback" if used_fallback else "DeepSeek-V3 (deepseek-chat)"
             }
         )
+
+    def _should_show_source_link(
+        self,
+        question: str,
+        intent: str,
+        status: DecisionStatus,
+        source: Optional[SourceMessage],
+        has_conflict: bool,
+    ) -> bool:
+        """Make a final, deterministic disclosure decision after answer verification."""
+        if status not in {DecisionStatus.VERIFIED, DecisionStatus.VERIFIED_WITH_CONFLICT_RESOLVED}:
+            return False
+        if not source or not source.message_url.startswith(("https://", "http://")):
+            return False
+
+        normalized_question = question.lower()
+        user_requested_source = any(term in normalized_question for term in self.LINK_REQUEST_TERMS)
+        is_live_actionable_announcement = (
+            source.id.startswith("discord_") and intent in self.ACTIONABLE_ANNOUNCEMENT_INTENTS
+        )
+        return user_requested_source or has_conflict or is_live_actionable_announcement or intent in self.DOCUMENT_ACTION_INTENTS

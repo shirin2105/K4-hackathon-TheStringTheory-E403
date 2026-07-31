@@ -68,18 +68,20 @@ class SourceRetriever:
 
                 posted_at_iso = msg.created_at.strftime("%Y-%m-%dT%H:%M:%S")
 
-                extracted_topic = self.extractor.extract_topic(clean_content)
-                extracted_cohort = self.extractor.extract_cohort(clean_content)
+                entities = self.extractor.extract(clean_content)
 
                 source_msg = SourceMessage(
                     id=f"discord_{msg.id}",
-                    channel_name=f"#{getattr(channel, 'name', 'thông-báo')}",
+                    channel_name=getattr(channel, "name", "thông-báo"),
+                    channel_id=str(channel.id),
+                    message_url=msg.jump_url,
                     author_name=msg.author.display_name or msg.author.name,
                     author_role="official",
                     posted_at=posted_at_iso,
                     content=clean_content,
-                    cohort=extracted_cohort or "ALL",
-                    topic=extracted_topic or "Announce",
+                    cohort=entities["cohort"] if entities["cohort"] != "UNKNOWN" else "ALL",
+                    topic=entities["topic"] or "Announce",
+                    intent=self.classifier.classify(clean_content),
                     status="active"
                 )
                 live_msgs.append(source_msg)
@@ -124,7 +126,8 @@ class SourceRetriever:
             overlap = len(q_tokens.intersection(msg_tokens))
             base_score += overlap * 4.0
 
-            if msg.channel_name in ["#Thông báo Khóa học", "#venture-arena", "#thong-bao"]:
+            normalized_channel = msg.channel_name.lstrip("#").lower()
+            if normalized_channel in ["thông báo khóa học", "venture-arena", "thong-bao", "thông-báo"]:
                 base_score += 15.0
 
             if base_score > 0 or len(q_tokens) == 0:

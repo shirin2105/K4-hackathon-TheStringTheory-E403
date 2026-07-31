@@ -1,4 +1,6 @@
 import os
+import asyncio
+import logging
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -8,6 +10,8 @@ from core.decision_engine import DecisionEngine
 from bot.embeds import create_result_embed
 from bot.views import VerifiedResultView, ConflictResultView, InsufficientResultView
 from models.result import DecisionStatus
+
+logger = logging.getLogger("NavigatorCommands")
 
 
 class NavigatorCommands(commands.Cog):
@@ -35,34 +39,36 @@ class NavigatorCommands(commands.Cog):
             try:
                 await interaction.response.defer()
             except Exception:
-                pass
+                logger.exception("Failed to defer slash-command response")
 
-        all_messages = await self.get_all_sources()
-
-        result = self.engine.process_query(
-            question=question,
-            user_id=str(interaction.user.id),
-            channel_id=str(interaction.channel_id),
-            messages=all_messages
-        )
-
-        embed = create_result_embed(result)
-
-        if result.status == DecisionStatus.VERIFIED:
-            view = VerifiedResultView(result)
-        elif result.status == DecisionStatus.VERIFIED_WITH_CONFLICT_RESOLVED:
-            view = ConflictResultView(result)
-        else:
-            view = InsufficientResultView(result)
-
-        # Send EXACTLY 1 single clean response message
         try:
+            all_messages = await self.get_all_sources()
+            result = await asyncio.to_thread(
+                self.engine.process_query,
+                question=question,
+                user_id=str(interaction.user.id),
+                channel_id=str(interaction.channel_id),
+                messages=all_messages,
+            )
+
+            embed = create_result_embed(result)
+            if result.status == DecisionStatus.VERIFIED:
+                view = VerifiedResultView(result)
+            elif result.status == DecisionStatus.VERIFIED_WITH_CONFLICT_RESOLVED:
+                view = ConflictResultView(result)
+            else:
+                view = InsufficientResultView(result)
+
             await interaction.followup.send(embed=embed, view=view)
-        except Exception:
+        except Exception as err:
+            logger.exception("Error handling slash command: %s", err)
             try:
-                await interaction.channel.send(embed=embed, view=view)
+                await interaction.followup.send(
+                    "⚠️ Có lỗi xảy ra trong quá trình xử lý câu hỏi. Vui lòng thử lại sau ít phút.",
+                    ephemeral=True,
+                )
             except Exception:
-                pass
+                logger.exception("Failed to send slash-command error response")
 
     @app_commands.command(name="status", description="Xem trạng thái hệ thống xác minh và độ tin cậy.")
     async def status_command(self, interaction: discord.Interaction):

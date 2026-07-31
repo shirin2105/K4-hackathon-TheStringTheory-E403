@@ -132,7 +132,11 @@ Copy `.env.example` to `.env`:
 DISCORD_BOT_TOKEN=your_discord_bot_token_here
 DISCORD_GUILD_ID=your_guild_id_here
 MOD_CHANNEL_ID=your_mod_channel_id_here
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
 ```
+
+Nếu `DEEPSEEK_API_KEY` bị thiếu hoặc dịch vụ LLM không phản hồi, bot sẽ trả trạng thái
+`INSUFFICIENT_EVIDENCE` thay vì suy đoán từ thông báo nguồn.
 
 ---
 
