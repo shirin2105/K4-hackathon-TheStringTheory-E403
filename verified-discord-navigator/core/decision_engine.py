@@ -17,6 +17,7 @@ class DecisionEngine:
     Main orchestrator for Verified Discord Navigator.
     Integrates NLP classification, retrieval, multi-factor ranking,
     conflict detection, Top 5 timestamp synthesis, and DeepSeek LLM.
+    Enforces Retrieve First, Decide Second Strategy.
     """
 
     MIN_CONFIDENCE_SCORE = 60.0
@@ -55,7 +56,7 @@ class DecisionEngine:
             resource_type=entities["resource_type"]
         )
 
-        # 2. Retrieve Candidates
+        # 2. RETRIEVE FIRST: Search official channel & 1,050 knowledge base entries
         all_candidates = self.retriever.retrieve(query, messages=messages)
 
         if not all_candidates:
@@ -95,7 +96,7 @@ class DecisionEngine:
         final_source = selected_scored.source if selected_scored else top_scored.source
 
         # 6. Build Top 5 Timestamped Context Blocks for LLM Time-Aware Synthesis
-        high_scoring_sources = [s for s in scored_sources if s.score >= 50.0]
+        high_scoring_sources = [s for s in scored_sources if s.score >= 30.0]
         top_5_scored = high_scoring_sources[:5] if high_scoring_sources else scored_sources[:5]
 
         combined_content_blocks = []
@@ -109,7 +110,7 @@ class DecisionEngine:
 
         context_content = "\n\n".join(combined_content_blocks)
 
-        # 7. LLM Time-Aware Answer Synthesis
+        # 7. LLM Time-Aware Answer Synthesis (Retrieve First, Decide Second)
         llm_answer = self.llm_client.synthesize_answer(
             question=question,
             source_content=context_content,
@@ -117,10 +118,20 @@ class DecisionEngine:
             current_time_str=current_time_str
         )
 
-        status = DecisionStatus.VERIFIED_WITH_CONFLICT_RESOLVED if has_conflict else DecisionStatus.VERIFIED
-        confidence = float(min(0.99, max(0.65, top_scored.score / 100.0)))
-        needs_mod = False
-        selected_source = final_source
+        refusal_terms = [
+            "chỉ hỗ trợ giải đáp các thắc mắc", "chưa có thông tin", "không tìm thấy thông tin",
+            "không có thông tin", "không đề cập", "không có đề cập", "chưa đề cập", "không thấy"
+        ]
+        if any(term in llm_answer.lower() for term in refusal_terms):
+            status = DecisionStatus.INSUFFICIENT_EVIDENCE
+            confidence = 0.20
+            needs_mod = True
+            selected_source = None
+        else:
+            status = DecisionStatus.VERIFIED_WITH_CONFLICT_RESOLVED if has_conflict else DecisionStatus.VERIFIED
+            confidence = float(min(0.99, max(0.65, top_scored.score / 100.0)))
+            needs_mod = False
+            selected_source = final_source
 
         query_dict = query.model_dump() if hasattr(query, "model_dump") else query.dict()
 

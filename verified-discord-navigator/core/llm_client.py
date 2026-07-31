@@ -12,6 +12,9 @@ class DeepSeekClient:
     """
     DeepSeek LLM Integration Client using standard library HTTP.
     Uses model: deepseek-chat (DeepSeek V3 Flash/Chat).
+    Strategy: RETRIEVE FIRST, DECIDE SECOND.
+    - If retrieved course knowledge base or announcements contain relevant information (XP, Codelabs, Gate, Bài lab, Rank...): Answer directly & concisely.
+    - Only if retrieved sources contain NO relevant info AND query is completely unrelated to course: Politely refuse.
     """
 
     def __init__(self, api_key: Optional[str] = None):
@@ -32,7 +35,7 @@ class DeepSeekClient:
                 {"role": "user", "content": user_prompt}
             ],
             "temperature": 0.1,
-            "max_tokens": 600
+            "max_tokens": 500
         }
 
         if json_mode:
@@ -58,7 +61,7 @@ class DeepSeekClient:
             "Hãy phân tích câu hỏi và trả về duy nhất 1 JSON object có các trường:\n"
             "- intent: 'deadline' | 'schedule' | 'workshop' | 'document' | 'submission' | 'regulation' | 'unknown'\n"
             "- cohort: 'K2' | 'K3' | 'K4' | 'ALL' | 'UNKNOWN'\n"
-            "- topic: string ngắn gọn (vd 'Gate 1', 'Workshop', 'CP2') hoặc null\n"
+            "- topic: string ngắn gọn (vd 'Gate 1', 'XP', 'CP2') hoặc null\n"
             "- date_reference: string (vd 'tối nay', 'tuần sau') hoặc null\n"
             "- resource_type: string (vd 'slide', 'link', 'repo') hoặc null\n\n"
             "Chỉ trả về JSON thuần, không thêm markdown hay giải thích."
@@ -75,22 +78,23 @@ class DeepSeekClient:
 
     def synthesize_answer(self, question: str, source_content: str, cohort: str, current_time_str: Optional[str] = None) -> str:
         """
-        Synthesizes answer from Top 5 timestamped candidate sources with full time-aware evaluation.
+        Synthesizes answer following the 'Retrieve First, Decide Second' principle.
         """
         if current_time_str is None:
             current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         system_prompt = (
-            "Bạn là Trợ lý AI Xác minh Thông tin Discord Khóa học.\n"
-            f"THỜI ĐIỂM HIỆN TẠI CỦA HỆ THỐNG: {current_time_str}.\n\n"
-            "Nhiệm vụ của bạn:\n"
-            "1. Đọc và phân tích TOP 5 nguồn thông tin được cung cấp bên dưới (mỗi nguồn có thông tin timestamp mốc thời gian đăng bài và kênh phát hành).\n"
-            "2. SO SÁNH THỜI GIAN giữa mốc thời gian đăng bài (posted_at) và THỜI ĐIỂM HIỆN TẠI. Ưu tiên các thông báo mới nhất và lọc bỏ các thông tin đã cũ/bị thay thế.\n"
-            "3. Đưa ra CÂU TRẢ LỜI CỤ THỂ, ĐẦY ĐỦ VÀ RÕ RÀNG cho câu hỏi của học viên. Liệt kê đầy đủ các sự kiện, hạn nộp hoặc hoạt động nếu có nhiều mục.\n"
-            "4. Nếu trong các nguồn KHÔNG CÓ THÔNG TIN liên quan đến câu hỏi, hãy thông báo ngắn gọn chưa có thông tin chính thức trong nguồn được cung cấp.\n"
-            "5. Trả lời chính xác 100% dựa vào dữ liệu nguồn, tuyệt đối không bịa ra thông tin không có trong nguồn."
+            "Bạn là Trợ lý AI Phản hồi Khóa học AI20K Build Phase.\n"
+            f"Thời điểm hiện tại của hệ thống: {current_time_str}.\n\n"
+            "QUY TẮC XỬ LÝ (RETRIEVE FIRST, DECIDE SECOND):\n"
+            "1. Đọc kỹ TOP NGUỒN TRÍCH XUẤT được cung cấp bên dưới (gồm Thông báo live và Cơ sở Tri thức khóa học chứa thông tin về XP, Codelabs, Gate, Bài lab, Rank, Ticket...).\n"
+            "2. NẾU TRONG NGUỒN CÓ THÔNG TIN GIẢI ĐÁP (kể cả định nghĩa/công dụng của XP, EXP, Rank, Quy trình làm bài lab...):\n"
+            "   -> Trả lời ĐÚNG VÀ ĐỦ, NGẮN GỌN DỄ HIỂU. Đưa thẳng định nghĩa, công dụng hoặc danh sách công việc lên đầu. Không chào hỏi hay giải thích rườm rà.\n"
+            "3. CHỈ NẾU TRONG NGUỒN KHÔNG CÓ THÔNG TIN VÀ CÂU HỎI HOÀN TOÀN KHÔNG LIÊN QUAN ĐẾN KHÓA HỌC (thời tiết, tán gẫu, bóng đá, toán học ngoài...):\n"
+            "   -> Từ chối ngắn gọn đúng câu: 'Xin lỗi, tôi là Trợ lý Khóa học và chỉ hỗ trợ giải đáp các thắc mắc, lịch trình, bài tập và quy định liên quan đến khóa học.'\n"
+            "4. KHÔNG DẪN LINK KHÔNG PHẢI LINK THÔNG BÁO DISCORD GỐC. Không tự bịa ra thông tin ngoài các nguồn được cung cấp."
         )
 
-        user_prompt = f"Thời điểm hiện tại: {current_time_str}\nCâu hỏi của học viên: {question}\nCohort: {cohort}\n\nTOP 5 NGUỒN TRÍCH XUẤT HÀNG ĐẦU:\n{source_content}"
+        user_prompt = f"Thời điểm hiện tại: {current_time_str}\nCâu hỏi: {question}\nCohort: {cohort}\n\nTOP NGUỒN TRÍCH XUẤT:\n{source_content}"
         ans = self._call_api(system_prompt, user_prompt, json_mode=False)
         return ans.strip() if ans else source_content

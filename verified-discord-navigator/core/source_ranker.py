@@ -112,11 +112,11 @@ class SourceRanker:
                 if any(term in msg_content for term in today_terms) or source.id.startswith("discord_"):
                     date_score = 15
                 else:
-                    date_score = 0
+                    date_score = -80
             elif q_date_lower in msg_content:
                 date_score = 15
             else:
-                date_score = -60
+                date_score = -80
         else:
             date_score = 0
         breakdown["date_match_score"] = float(date_score)
@@ -151,7 +151,7 @@ class SourceRanker:
 
             has_keyword_match = (
                 len(matched_words) >= 2 or
-                any(w in ["laptop", "codelabs", "github", "drive"] for w in matched_words) or
+                any(w in ["laptop", "codelabs", "github", "drive", "xp", "exp", "rank"] for w in matched_words) or
                 (q_topic and q_topic not in self.GENERIC_TOPICS and q_topic in msg_topic)
             )
 
