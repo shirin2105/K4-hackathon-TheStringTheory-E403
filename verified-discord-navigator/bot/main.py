@@ -61,39 +61,49 @@ def create_bot(enable_message_content: bool = True) -> tuple[commands.Bot, Decis
         if message.author.bot:
             return
 
-        if bot.user in message.mentions:
+        is_mentioned = bot.user in message.mentions
+        is_dm = isinstance(message.channel, discord.DMChannel)
+
+        if is_mentioned or is_dm:
             clean_question = message.content.replace(f"<@{bot.user.id}>", "").replace(f"<@!{bot.user.id}>", "").strip()
             if not clean_question:
-                await message.channel.send("Bạn cần hỏi gì? Hãy thử: `@VerifiedBot Workshop 2 khi nào có slide?`")
+                await message.channel.send("Bạn cần hỏi gì? Hãy thử: `@VerifiedBot XP để làm gì?` hoặc dùng lệnh `/ask`")
                 return
 
-            intent = engine.classifier.classify(clean_question)
-            ann_channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID", "1532306560871567390").strip()
+            try:
+                async with message.channel.typing():
+                    intent = engine.classifier.classify(clean_question)
+                    ann_channel_id = os.getenv("ANNOUNCEMENT_CHANNEL_ID", "1532306560871567390").strip()
 
-            live_messages = []
-            if ann_channel_id and intent in ["schedule", "workshop", "deadline", "unknown"]:
-                live_messages = await engine.retriever.fetch_live_messages_async(bot, ann_channel_id)
+                    live_messages = []
+                    if ann_channel_id and intent in ["schedule", "workshop", "deadline", "unknown"]:
+                        try:
+                            live_messages = await engine.retriever.fetch_live_messages_async(bot, ann_channel_id)
+                        except Exception as fetch_err:
+                            logger.warning(f"Live fetch notice: {fetch_err}")
 
-            db_messages = engine.retriever.load_all_messages()
-            all_messages = live_messages + db_messages if live_messages else db_messages
+                    db_messages = engine.retriever.load_all_messages()
+                    all_messages = live_messages + db_messages if live_messages else db_messages
 
-            result = engine.process_query(
-                question=clean_question,
-                user_id=str(message.author.id),
-                channel_id=str(message.channel.id),
-                messages=all_messages
-            )
+                    result = engine.process_query(
+                        question=clean_question,
+                        user_id=str(message.author.id),
+                        channel_id=str(message.channel.id),
+                        messages=all_messages
+                    )
 
-            embed = create_result_embed(result)
-            if result.status == DecisionStatus.VERIFIED:
-                view = VerifiedResultView(result)
-            elif result.status == DecisionStatus.VERIFIED_WITH_CONFLICT_RESOLVED:
-                view = ConflictResultView(result)
-            else:
-                view = InsufficientResultView(result)
+                    embed = create_result_embed(result)
+                    if result.status == DecisionStatus.VERIFIED:
+                        view = VerifiedResultView(result)
+                    elif result.status == DecisionStatus.VERIFIED_WITH_CONFLICT_RESOLVED:
+                        view = ConflictResultView(result)
+                    else:
+                        view = InsufficientResultView(result)
 
-            # Send ONLY 1 SINGLE clean embed message
-            await message.channel.send(embed=embed, view=view)
+                    await message.channel.send(embed=embed, view=view)
+            except Exception as err:
+                logger.error(f"Error handling message: {err}")
+                await message.channel.send("⚠️ Có lỗi xảy ra trong quá trình xử lý câu hỏi. Vui lòng thử lại sau ít phút.")
             return
 
         await bot.process_commands(message)
