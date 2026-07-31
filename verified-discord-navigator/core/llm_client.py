@@ -12,9 +12,9 @@ class DeepSeekClient:
     """
     DeepSeek LLM Integration Client using standard library HTTP.
     Uses model: deepseek-chat (DeepSeek V3 Flash/Chat).
-    Strategy: RETRIEVE FIRST, DECIDE SECOND.
-    - If retrieved course knowledge base or announcements contain relevant information (XP, Codelabs, Gate, Bài lab, Rank...): Answer directly & concisely.
-    - Only if retrieved sources contain NO relevant info AND query is completely unrelated to course: Politely refuse.
+    Strategy: Strict No-Filler & Strict Scope.
+    - Answers ONLY what is explicitly asked.
+    - Never appends unasked handbook tutorials, guidelines, or extra tips.
     """
 
     def __init__(self, api_key: Optional[str] = None):
@@ -78,7 +78,7 @@ class DeepSeekClient:
 
     def synthesize_answer(self, question: str, source_content: str, cohort: str, current_time_str: Optional[str] = None) -> str:
         """
-        Synthesizes answer following the 'Retrieve First, Decide Second' principle.
+        Synthesizes answer following strict No-Filler, No-Unasked-Info principles.
         """
         if current_time_str is None:
             current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -86,13 +86,15 @@ class DeepSeekClient:
         system_prompt = (
             "Bạn là Trợ lý AI Phản hồi Khóa học AI20K Build Phase.\n"
             f"Thời điểm hiện tại của hệ thống: {current_time_str}.\n\n"
-            "QUY TẮC XỬ LÝ (RETRIEVE FIRST, DECIDE SECOND):\n"
-            "1. Đọc kỹ TOP NGUỒN TRÍCH XUẤT được cung cấp bên dưới (gồm Thông báo live và Cơ sở Tri thức khóa học chứa thông tin về XP, Codelabs, Gate, Bài lab, Rank, Ticket...).\n"
-            "2. NẾU TRONG NGUỒN CÓ THÔNG TIN GIẢI ĐÁP (kể cả định nghĩa/công dụng của XP, EXP, Rank, Quy trình làm bài lab...):\n"
-            "   -> Trả lời ĐÚNG VÀ ĐỦ, NGẮN GỌN DỄ HIỂU. Đưa thẳng định nghĩa, công dụng hoặc danh sách công việc lên đầu. Không chào hỏi hay giải thích rườm rà.\n"
-            "3. CHỈ NẾU TRONG NGUỒN KHÔNG CÓ THÔNG TIN VÀ CÂU HỎI HOÀN TOÀN KHÔNG LIÊN QUAN ĐẾN KHÓA HỌC (thời tiết, tán gẫu, bóng đá, toán học ngoài...):\n"
-            "   -> Từ chối ngắn gọn đúng câu: 'Xin lỗi, tôi là Trợ lý Khóa học và chỉ hỗ trợ giải đáp các thắc mắc, lịch trình, bài tập và quy định liên quan đến khóa học.'\n"
-            "4. KHÔNG DẪN LINK KHÔNG PHẢI LINK THÔNG BÁO DISCORD GỐC. Không tự bịa ra thông tin ngoài các nguồn được cung cấp."
+            "QUY TẮC NGHÊM NGẶT (TUYỆT ĐỐI TUÂN THỦ):\n"
+            "1. ĐÚNG VÀ ĐỦ - KHÔNG THỪA THÔNG TIN KHÔNG ĐƯỢC HỎI:\n"
+            "   - Chỉ trả lời chính xác điều được hỏi trong câu hỏi. TUYỆT ĐỐI KHÔNG tự động chèn thêm các hướng dẫn quy trình phụ (như quy trình fork repo, hướng dẫn nộp lab chung...) nếu người dùng KHÔNG hỏi.\n"
+            "   - Với các câu hỏi về lịch trình/công việc ('hôm nay làm gì', 'hôm nay phải làm gì', 'lịch hôm nay'): CHỈ liệt kê đúng các sự kiện/deadline/workshop có mốc thời gian là HÔM NAY. KHÔNG liệt kê hướng dẫn quy trình chung.\n"
+            "2. RETRIEVE FIRST - GIẢI ĐÁP KHÁI NIỆM KHÓA HỌC:\n"
+            "   - Nếu câu hỏi hỏi về khái niệm/quy định trong khóa học (XP, EXP, Rank, Gate, Ticket, Codelabs...): Trả lời đi thẳng vào định nghĩa và công dụng, không chào hỏi dông dài.\n"
+            "3. TỪ CHỐI CÂU HỎI NGOÀI KHÓA HỌC:\n"
+            "   - Nếu câu hỏi không có trong nguồn và hoàn toàn không liên quan khóa học (thời tiết, tán gẫu...), từ chối ngắn gọn đúng câu: 'Xin lỗi, tôi là Trợ lý Khóa học và chỉ hỗ trợ giải đáp các thắc mắc, lịch trình, bài tập và quy định liên quan đến khóa học.'\n"
+            "4. KHÔNG CHÈN LINK GIẢ HOẶC LINK KHÔNG ĐƯỢC YÊU CẦU."
         )
 
         user_prompt = f"Thời điểm hiện tại: {current_time_str}\nCâu hỏi: {question}\nCohort: {cohort}\n\nTOP NGUỒN TRÍCH XUẤT:\n{source_content}"
