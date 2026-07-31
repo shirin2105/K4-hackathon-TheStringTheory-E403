@@ -11,10 +11,10 @@ DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 class DeepSeekClient:
     """
     DeepSeek LLM Integration Client using standard library HTTP.
-    Enforces Strict User Rules:
-    1. Scope: Only answer course-related questions / tasks. Refuse non-course queries.
-    2. Format: Correct & Complete, Ultra-concise, Direct, No filler or greetings.
-    3. Links: No document links unless official Discord message.
+    Uses model: deepseek-chat (DeepSeek V3 Flash/Chat).
+    Strategy: RETRIEVE FIRST, DECIDE SECOND.
+    - If retrieved course knowledge base or announcements contain relevant information (XP, Codelabs, Gate, Bài lab, Rank...): Answer directly & concisely.
+    - Only if retrieved sources contain NO relevant info AND query is completely unrelated to course: Politely refuse.
     """
 
     def __init__(self, api_key: Optional[str] = None):
@@ -59,9 +59,9 @@ class DeepSeekClient:
         system_prompt = (
             "Bạn là AI phân tích truy vấn cho hệ thống Discord khoá học. "
             "Hãy phân tích câu hỏi và trả về duy nhất 1 JSON object có các trường:\n"
-            "- intent: 'deadline' | 'schedule' | 'workshop' | 'document' | 'submission' | 'regulation' | 'out_of_scope' | 'unknown'\n"
+            "- intent: 'deadline' | 'schedule' | 'workshop' | 'document' | 'submission' | 'regulation' | 'unknown'\n"
             "- cohort: 'K2' | 'K3' | 'K4' | 'ALL' | 'UNKNOWN'\n"
-            "- topic: string ngắn gọn (vd 'Gate 1', 'Workshop', 'CP2') hoặc null\n"
+            "- topic: string ngắn gọn (vd 'Gate 1', 'XP', 'CP2') hoặc null\n"
             "- date_reference: string (vd 'tối nay', 'tuần sau') hoặc null\n"
             "- resource_type: string (vd 'slide', 'link', 'repo') hoặc null\n\n"
             "Chỉ trả về JSON thuần, không thêm markdown hay giải thích."
@@ -78,10 +78,7 @@ class DeepSeekClient:
 
     def synthesize_answer(self, question: str, source_content: str, cohort: str, current_time_str: Optional[str] = None) -> str:
         """
-        Synthesizes answer adhering strictly to the 3 User Rules:
-        Rule 1: Only answer course-related questions. Politely refuse non-course questions.
-        Rule 2: Correct, complete, concise, easy to understand. No filler, greetings, or extra words.
-        Rule 3: No fake or document links.
+        Synthesizes answer following the 'Retrieve First, Decide Second' principle.
         """
         if current_time_str is None:
             current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -89,15 +86,13 @@ class DeepSeekClient:
         system_prompt = (
             "Bạn là Trợ lý AI Phản hồi Khóa học AI20K Build Phase.\n"
             f"Thời điểm hiện tại của hệ thống: {current_time_str}.\n\n"
-            "TUÂN THỦ BẮT BUỘC 3 QUY TẮC PHẢN HỒI:\n\n"
-            "QUY TẮC 1 - CHỈ TRẢ LỜI CÂU HỎI VỀ KHÓA HỌC:\n"
-            "Nếu câu hỏi KHÔNG LIÊN QUAN đến khóa học hay việc cần làm của khóa học (ví dụ: thời tiết, tán gẫu, tin tức ngoài, giải toán...), "
-            "bạn PHẢI TỪ CHỐI ngắn gọn đúng câu sau: 'Xin lỗi, tôi là Trợ lý Khóa học và chỉ hỗ trợ giải đáp các thắc mắc, lịch trình, bài tập và quy định liên quan đến khóa học.'\n\n"
-            "QUY TẮC 2 - ĐÚNG VÀ ĐỦ, NGẮN GỌN DỄ HIỂU:\n"
-            "Trả lời ĐÚNG VÀ ĐỦ, KHÔNG THỪA KHÔNG THIẾU. Đưa thẳng kết quả/danh sách công việc/deadline lên dòng đầu tiên. "
-            "Không thêm lời chào hỏi rườm rà (ví dụ 'Chào bạn', 'Dưới đây là...'), không giải thích dông dài hay dùng lời hoa mỹ thừa thải.\n\n"
-            "QUY TẮC 3 - KHÔNG TỰ TẠO LINK GIẢ:\n"
-            "Chỉ trích dẫn thông tin văn bản. Không tự tạo thêm link tài liệu nếu trong nguồn không có sẵn."
+            "QUY TẮC XỬ LÝ (RETRIEVE FIRST, DECIDE SECOND):\n"
+            "1. Đọc kỹ TOP NGUỒN TRÍCH XUẤT được cung cấp bên dưới (gồm Thông báo live và Cơ sở Tri thức khóa học chứa thông tin về XP, Codelabs, Gate, Bài lab, Rank, Ticket...).\n"
+            "2. NẾU TRONG NGUỒN CÓ THÔNG TIN GIẢI ĐÁP (kể cả định nghĩa/công dụng của XP, EXP, Rank, Quy trình làm bài lab...):\n"
+            "   -> Trả lời ĐÚNG VÀ ĐỦ, NGẮN GỌN DỄ HIỂU. Đưa thẳng định nghĩa, công dụng hoặc danh sách công việc lên đầu. Không chào hỏi hay giải thích rườm rà.\n"
+            "3. CHỈ NẾU TRONG NGUỒN KHÔNG CÓ THÔNG TIN VÀ CÂU HỎI HOÀN TOÀN KHÔNG LIÊN QUAN ĐẾN KHÓA HỌC (thời tiết, tán gẫu, bóng đá, toán học ngoài...):\n"
+            "   -> Từ chối ngắn gọn đúng câu: 'Xin lỗi, tôi là Trợ lý Khóa học và chỉ hỗ trợ giải đáp các thắc mắc, lịch trình, bài tập và quy định liên quan đến khóa học.'\n"
+            "4. KHÔNG DẪN LINK KHÔNG PHẢI LINK THÔNG BÁO DISCORD GỐC. Không tự bịa ra thông tin ngoài các nguồn được cung cấp."
         )
 
         user_prompt = f"Thời điểm hiện tại: {current_time_str}\nCâu hỏi: {question}\nCohort: {cohort}\n\nTOP NGUỒN TRÍCH XUẤT:\n{source_content}"

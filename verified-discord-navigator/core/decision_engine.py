@@ -17,18 +17,10 @@ class DecisionEngine:
     Main orchestrator for Verified Discord Navigator.
     Integrates NLP classification, retrieval, multi-factor ranking,
     conflict detection, Top 5 timestamp synthesis, and DeepSeek LLM.
-    Enforces 3 Strict User Rules:
-    1. Refuse out-of-scope non-course queries.
-    2. Correct & Complete, ultra-concise, no filler/greetings.
-    3. No fake/document links (only official Discord message URLs).
+    Enforces Retrieve First, Decide Second Strategy.
     """
 
     MIN_CONFIDENCE_SCORE = 60.0
-
-    OUT_OF_SCOPE_KEYWORDS = [
-        "thời tiết", "thời tiết hôm nay", "thủ đô", "mấy giờ rồi", "ăn cơm chưa",
-        "thời tiết ngày mai", "chứng khoán", "bóng đá", "thời sự", "xổ số"
-    ]
 
     def __init__(self, data_path: Optional[str] = None):
         self.intent_classifier = IntentClassifier()
@@ -47,20 +39,6 @@ class DecisionEngine:
         messages: Optional[List[SourceMessage]] = None
     ) -> DecisionResult:
         current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        q_lower = question.lower().strip()
-
-        # Rule 1: Guardrail for explicit out-of-scope non-course questions
-        if any(term in q_lower for term in self.OUT_OF_SCOPE_KEYWORDS):
-            return DecisionResult(
-                status=DecisionStatus.INSUFFICIENT_EVIDENCE,
-                confidence=0.0,
-                answer="Xin lỗi, tôi là Trợ lý Khóa học và chỉ hỗ trợ giải đáp các thắc mắc, lịch trình, bài tập và quy định liên quan đến khóa học.",
-                selected_source=None,
-                candidate_sources=[],
-                rejected_sources=[],
-                needs_mod=False,
-                verification_details={"reason": "Out of scope non-course query"}
-            )
 
         # 1. Intent Classification & Entity Extraction
         intent = self.intent_classifier.classify(question)
@@ -78,7 +56,7 @@ class DecisionEngine:
             resource_type=entities["resource_type"]
         )
 
-        # 2. Retrieve Candidates
+        # 2. RETRIEVE FIRST: Search official channel & 1,050 knowledge base entries
         all_candidates = self.retriever.retrieve(query, messages=messages)
 
         if not all_candidates:
@@ -118,7 +96,7 @@ class DecisionEngine:
         final_source = selected_scored.source if selected_scored else top_scored.source
 
         # 6. Build Top 5 Timestamped Context Blocks for LLM Time-Aware Synthesis
-        high_scoring_sources = [s for s in scored_sources if s.score >= 50.0]
+        high_scoring_sources = [s for s in scored_sources if s.score >= 30.0]
         top_5_scored = high_scoring_sources[:5] if high_scoring_sources else scored_sources[:5]
 
         combined_content_blocks = []
@@ -132,7 +110,7 @@ class DecisionEngine:
 
         context_content = "\n\n".join(combined_content_blocks)
 
-        # 7. LLM Time-Aware Answer Synthesis
+        # 7. LLM Time-Aware Answer Synthesis (Retrieve First, Decide Second)
         llm_answer = self.llm_client.synthesize_answer(
             question=question,
             source_content=context_content,
@@ -140,10 +118,20 @@ class DecisionEngine:
             current_time_str=current_time_str
         )
 
-        status = DecisionStatus.VERIFIED_WITH_CONFLICT_RESOLVED if has_conflict else DecisionStatus.VERIFIED
-        confidence = float(min(0.99, max(0.65, top_scored.score / 100.0)))
-        needs_mod = False
-        selected_source = final_source
+        refusal_terms = [
+            "chỉ hỗ trợ giải đáp các thắc mắc", "chưa có thông tin", "không tìm thấy thông tin",
+            "không có thông tin", "không đề cập", "không có đề cập", "chưa đề cập", "không thấy"
+        ]
+        if any(term in llm_answer.lower() for term in refusal_terms):
+            status = DecisionStatus.INSUFFICIENT_EVIDENCE
+            confidence = 0.20
+            needs_mod = True
+            selected_source = None
+        else:
+            status = DecisionStatus.VERIFIED_WITH_CONFLICT_RESOLVED if has_conflict else DecisionStatus.VERIFIED
+            confidence = float(min(0.99, max(0.65, top_scored.score / 100.0)))
+            needs_mod = False
+            selected_source = final_source
 
         query_dict = query.model_dump() if hasattr(query, "model_dump") else query.dict()
 
