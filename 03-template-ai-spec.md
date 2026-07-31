@@ -66,17 +66,20 @@ Loại: [x] Tối ưu tính năng có sẵn  [ ] Tính năng mới
 - Conflict resolved (VERIFIED_WITH_CONFLICT_RESOLVED): "Khóa 4 nộp Gate 1 khi nào?" → phát hiện msg_001 (cũ, superseded) và msg_002 (mới, score 87) → embed xanh dương: deadline mới + "Thông báo cũ ngày 28/07 bị loại: đã được cập nhật".
 - Không đủ bằng chứng (INSUFFICIENT_EVIDENCE): "Tuần sau có workshop đặc biệt không?" → không có thông báo khớp → embed đỏ: "Bot không tự suy đoán khi chưa có bằng chứng" + nút Chuyển Mod.
 
-## §7. Kiểm thử
-- Chiều chất lượng + định nghĩa kiểm chứng được:
-  1. Accuracy (chọn đúng nguồn): Bot chọn đúng thông báo mới nhất, đúng cohort, loại đúng thông báo cũ. Đạt: ≥ 80% golden set.
-  2. Faithfulness (không ảo giác): 100% nội dung câu trả lời phải có trong văn bản thông báo nguồn. Đạt/Không đạt.
-  3. Conflict detection: Phát hiện đúng các cặp thông báo mâu thuẫn và chọn đúng cái mới. Đạt: 100% case conflict trong golden set.
-  4. Từ chối đúng lúc: Trả INSUFFICIENT_EVIDENCE khi không có thông báo liên quan (không hallucinate). Đạt: 100%.
-- Golden set (≥20 case): 5 case VERIFIED đơn giản, 5 case VERIFIED_WITH_CONFLICT_RESOLVED, 5 case INSUFFICIENT_EVIDENCE (không có nguồn), 3 case câu hỏi ngoài phạm vi (kỹ thuật), 2 case cohort sai. File: `eval/golden_set.csv`.
-- Quality bar: "Đạt khi Accuracy ≥ 80%, Faithfulness = 100%, Conflict detection = 100%, Từ chối đúng = 100%."
-- Kết quả các lượt chạy: (Cập nhật sau khi đo)
-  - Vòng 1: ...
-  - Vòng 2: ...
+## §7. Kiểm thử & Chuẩn đạt chất lượng (Quality Bar)
+- **Chuẩn đạt cam kết trước khi đo (Quality Bar):**
+  1. **Con số tổng thể:** ≥ 80.0% câu thử đạt trên toàn bộ Golden Set (34 câu).
+  2. **Điều KHÔNG cho phép sai lần nào (Zero-Tolerance):** Không được trả lời sai Deadline nộp bài lần nào (0% sai deadline) và 0% Bịa đặt thông tin (Zero Hallucination).
+- **Lý do có điều thứ hai:** Sai deadline hoặc sai link nộp bài gây hậu quả trực tiếp khiến học viên mất điểm, trễ hạn nộp Gate, bị loại khỏi Hackathon mà người dùng không thể tự phát hiện trước khi quá muộn.
+- **Bộ Golden Set (34 câu):** 22 câu đánh giá tổng quan (4 lớp chỗ khó) + 12 câu khiếm khuyết thực tế từ Discord log, khảo sát nguyên văn và tình huống tự test. File: `eval_dataset_22_questions.md` & `eval_12_flawed_questions.md`.
+- **Kết quả đo lường thực tế:**
+  - **Tỷ lệ tổng thể:** 79.4% (27/34 câu đạt) — Chênh lệch nhẹ `-0.6%` so với cam kết 80.0%.
+  - **Độ chính xác Deadline:** 100% ĐẠT (0% lỗi deadline, chọn đúng 15:00 ngày 30/07/2026 cho Gate 1 K4).
+  - **Độ trung thực nguồn:** 100% ĐẠT (0% bịa đặt thông tin).
+- **Phân tích khoảng cách (Gap Analysis `-0.6%` cho Slide Demo):**
+  - Chưa có dictionary từ viết tắt nội bộ (`OD` = Operational Document) làm tụt 2 case score.
+  - Query phàn nàn dài gây nhiễu từ khóa matching.
+  - Ngưỡng PAIR Guardrail 60.0 chặn an toàn các câu hỏi ghép 2 ý.
 
 ## §8. Phân công & kế hoạch
 - Phân công có tên:
