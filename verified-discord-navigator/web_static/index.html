@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verified Discord Navigator — Trợ Lý AI Khóa Học VLearn</title>
+    
+    <!-- Google Fonts: Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- App Container -->
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div class="brand-text">
+                    <h2>Discord Navigator</h2>
+                    <span class="version-tag">Verified CP2 System</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-item active" data-tab="tab-chat">
+                    <i class="fa-solid fa-comments"></i>
+                    <span>Trợ Lý Live & Pipeline</span>
+                </button>
+                <button class="nav-item" data-tab="tab-announcements">
+                    <i class="fa-solid fa-bullhorn"></i>
+                    <span>Nguồn Thông Báo Live</span>
+                </button>
+                <button class="nav-item" data-tab="tab-benchmark">
+                    <i class="fa-solid fa-vial-circle-check"></i>
+                    <span>Benchmark 34 Câu</span>
+                    <span class="badge-accent">79.4%</span>
+                </button>
+                <button class="nav-item" data-tab="tab-quality">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Quality Bar & Gap</span>
+                </button>
+            </nav>
+
+            <div class="team-info">
+                <div class="team-label">Team: The String Theory</div>
+                <div class="team-track">Track B — Trợ Lý Học Viên</div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header Bar -->
+            <header class="top-header">
+                <div class="header-title">
+                    <h1 id="page-title">Hệ Thống Trợ Lý AI Xác Minh Thông Báo Discord</h1>
+                    <p class="subtitle" id="page-subtitle">Nhận diện nguồn tài nguyên từ trang thông báo chính thức & Khống chế ảo giác</p>
+                </div>
+                <div class="header-actions">
+                    <div class="status-indicator">
+                        <span class="pulse-dot"></span>
+                        <span class="status-text">Động Cơ Scoring & LLM Online</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- TAB 1: CHAT & PIPELINE PLAYGROUND -->
+            <section id="tab-chat" class="tab-content active">
+                <div class="playground-layout">
+                    <!-- Left Column: Input & Live Chat Embed -->
+                    <div class="chat-column">
+                        <div class="glass-card query-box-card">
+                            <h3><i class="fa-solid fa-circle-question"></i> Đặt Câu Hỏi Thử Nghiệm</h3>
+                            
+                            <!-- Scenario Quick Chips -->
+                            <div class="scenario-chips">
+                                <span class="chip-label">Scenario Mẫu:</span>
+                                <button class="chip-btn" data-query="Khóa 4 nộp Gate 1 khi nào?">
+                                    <i class="fa-solid fa-bolt"></i> Deadline Gate 1 K4 (Conflict)
+                                </button>
+                                <button class="chip-btn" data-query="Workshop tối nay lúc mấy giờ?">
+                                    <i class="fa-solid fa-clock"></i> Workshop Tối Nay
+                                </button>
+                                <button class="chip-btn" data-query="nộp OD ở đâu b">
+                                    <i class="fa-solid fa-file-arrow-up"></i> nộp OD ở đâu (Lỗi chính tả)
+                                </button>
+                                <button class="chip-btn" data-query="Cho xin đáp án bộ câu hỏi trắc nghiệm Gate 1">
+                                    <i class="fa-solid fa-ban"></i> Xin Đáp Án (Vi phạm)
+                                </button>
+                                <button class="chip-btn" data-query="Khoá học có tổ chức buổi Offline tại Hà Nội không bot?">
+                                    <i class="fa-solid fa-ghost"></i> Sự Kiện Offline (No Info)
+                                </button>
+                            </div>
+
+                            <form id="query-form" class="query-form">
+                                <div class="input-wrapper">
+                                    <input type="text" id="user-query-input" placeholder="Nhập thắc mắc logistics, deadline, link nộp bài..." required>
+                                    <button type="submit" id="btn-submit-query" class="btn-primary">
+                                        <i class="fa-solid fa-paper-plane"></i> Gửi Bot
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Discord Embed Output View -->
+                        <div class="glass-card embed-output-card" id="embed-output-container">
+                            <div class="card-header">
+                                <h3><i class="fa-brands fa-discord"></i> Discord Output Embed (Giao Diện Học Viên Nhìn Thấy)</h3>
+                                <span class="status-badge status-idle" id="embed-status-badge">Đang Chờ Hỏi</span>
+                            </div>
+
+                            <div class="discord-embed" id="discord-embed-box">
+                                <div class="embed-border" id="embed-border-color"></div>
+                                <div class="embed-inner">
+                                    <div class="embed-author">
+                                        <i class="fa-solid fa-robot"></i> Trợ Lý Navigator • Xác Minh Tự Động
+                                    </div>
+                                    <h4 class="embed-title" id="embed-title-text">Chưa có dữ liệu tìm kiếm</h4>
+                                    <div class="embed-description" id="embed-desc-text">
+                                        Hãy chọn một scenario mẫu phía trên hoặc nhập câu hỏi bất kỳ để bot truy xuất `#thong-bao` và đưa ra phản hồi trực tiếp.
+                                    </div>
+                                    <div class="embed-fields" id="embed-fields-container"></div>
+                                    <div class="embed-footer" id="embed-footer-text">
+                                        <i class="fa-solid fa-lock"></i> Động cơ Verified Discord Navigator
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="embed-actions" id="embed-action-buttons">
+                                <button class="btn-action" id="btn-view-source" disabled><i class="fa-solid fa-external-link"></i> Mở Nguồn Chính Thức</button>
+                                <button class="btn-action" id="btn-view-score" disabled><i class="fa-solid fa-calculator"></i> Xem Score Breakdown</button>
+                                <button class="btn-action btn-danger" id="btn-escalate-mod"><i class="fa-solid fa-headset"></i> Chuyển Mod</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Pipeline Execution & Source Verification -->
+                    <div class="pipeline-column">
+                        <div class="glass-card pipeline-card">
+                            <h3><i class="fa-solid fa-diagram-project"></i> Pipeline 8 Bước Xử Lý Nguồn</h3>
+
+                            <div class="pipeline-steps">
+                                <div class="step-item" id="step-1">
+                                    <div class="step-number">1</div>
+                                    <div class="step-content">
+                                        <div class="step-title">Intent & Entity Extraction</div>
+                                        <div class="step-detail" id="step-1-detail">Phân tích cohort (K4/K3), topic, mốc thời gian...</div>
+                                    </div>
+                                </div>
+
+                                <div class="step-item" id="step-2">
+                                    <div class="step-number">2</div>
+                                    <div class="step-content">
+                                        <div class="step-title">Official Channel Retrieval</div>
+                                        <div class="step-detail" id="step-2-detail">Truy xuất dữ liệu `#thong-bao`, `#venture-arena`...</div>
+                                    </div>
+                                </div>
+
+                                <div class="step-item" id="step-3">
+                                    <div class="step-number">3</div>
+                                    <div class="step-content">
+                                        <div class="step-title">8-Factor Source Scoring</div>
+                                        <div class="step-detail" id="step-3-detail">Chấm điểm Thẩm quyền, Cohort Match, Freshness...</div>
+                                    </div>
+                                </div>
+
+                                <div class="step-item" id="step-4">
+                                    <div class="step-number">4</div>
+                                    <div class="step-content">
+                                        <div class="step-title">Confidence Gate (≥ 60.0)</div>
+                                        <div class="step-detail" id="step-4-detail">Kiểm tra ngưỡng tin cậy chống hallucination...</div>
+                                    </div>
+                                </div>
+
+                                <div class="step-item" id="step-5">
+                                    <div class="step-number">5</div>
+                                    <div class="step-content">
+                                        <div class="step-title">Conflict & Supersedes Chain</div>
+                                        <div class="step-detail" id="step-5-detail">Phát hiện và hủy bỏ thông báo cũ mâu thuẫn...</div>
+                                    </div>
+                                </div>
+
+                                <div class="step-item" id="step-6">
+                                    <div class="step-number">6</div>
+                                    <div class="step-content">
+                                        <div class="step-title">Time-Aware LLM Synthesis</div>
+                                        <div class="step-detail" id="step-6-detail">Tổng hợp câu trả lời ngắn gọn ≤ 40 từ...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Rejected Sources Analysis -->
+                        <div class="glass-card rejected-sources-card">
+                            <h3><i class="fa-solid fa-filter-circle-xmark"></i> Các Nguồn Đã Bị Loại & Lý Do</h3>
+                            <div class="rejected-list" id="rejected-list-box">
+                                <div class="empty-state">Chưa có nguồn bị loại</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: OFFICIAL ANNOUNCEMENT HUB -->
+            <section id="tab-announcements" class="tab-content">
+                <div class="announcement-hub-layout">
+                    <div class="glass-card add-announcement-card">
+                        <h3><i class="fa-solid fa-plus-circle"></i> Thêm Thông Báo Mới Trực Tiếp (Test Dynamic Conflict Resolution)</h3>
+                        <form id="add-announcement-form">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Kênh đăng bài</label>
+                                    <select id="ann-channel">
+                                        <option value="#Thông báo Khóa học">#Thông báo Khóa học</option>
+                                        <option value="#venture-arena">#venture-arena</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Cohort áp dụng</label>
+                                    <select id="ann-cohort">
+                                        <option value="K4">Khóa 4 (K4)</option>
+                                        <option value="K3">Khóa 3 (K3)</option>
+                                        <option value="ALL">Toàn bộ (ALL)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Nội dung thông báo mới nhất</label>
+                                <textarea id="ann-content" rows="3" placeholder="Ví dụ: CẬP NHẬT MỚI: Deadline Gate 1 dành cho Khóa 4 gia hạn tới 18:00 ngày 01/08/2026..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn-primary"><i class="fa-solid fa-upload"></i> Đăng Thông Báo Mới Vẫn Giữ Live</button>
+                        </form>
+                    </div>
+
+                    <div class="glass-card announcement-list-card">
+                        <h3><i class="fa-solid fa-list-check"></i> Thư Viện Nguồn Thông Báo Chính Thức Trong Database (`#thong-bao`)</h3>
+                        <div class="announcement-grid" id="announcement-items-container">
+                            <div class="loading-state">Đang tải danh sách thông báo chính thức...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: GOLDEN SET BENCHMARK SUITE -->
+            <section id="tab-benchmark" class="tab-content">
+                <div class="glass-card benchmark-summary-card">
+                    <div class="benchmark-metrics">
+                        <div class="metric-box">
+                            <span class="metric-value" id="bm-total-cases">34</span>
+                            <span class="metric-label">Tổng Số Câu Test</span>
+                        </div>
+                        <div class="metric-box green">
+                            <span class="metric-value" id="bm-passed-cases">27</span>
+                            <span class="metric-label">Số Câu ĐẠT (Passed)</span>
+                        </div>
+                        <div class="metric-box red">
+                            <span class="metric-value" id="bm-failed-cases">7</span>
+                            <span class="metric-label">Số Câu Chưa Đạt (Gap)</span>
+                        </div>
+                        <div class="metric-box accent">
+                            <span class="metric-value" id="bm-accuracy-rate">79.4%</span>
+                            <span class="metric-label">Tỷ Lệ Chính Xác</span>
+                        </div>
+                    </div>
+
+                    <div class="benchmark-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 79.4%;"></div>
+                        </div>
+                        <div class="progress-text">Target Cam Kết: ≥ 80.0% | Đạt Được: 79.4% (Chênh lệch -0.6%)</div>
+                    </div>
+                </div>
+
+                <!-- Filter Controls & Benchmark Table -->
+                <div class="glass-card benchmark-table-card">
+                    <div class="table-controls">
+                        <div class="filter-group">
+                            <button class="filter-btn active" data-filter="all">Tất Cả (34)</button>
+                            <button class="filter-btn" data-filter="set1">Bộ 1: Không Có Tài Liệu</button>
+                            <button class="filter-btn" data-filter="set2">Bộ 2: Mơ Hồ</button>
+                            <button class="filter-btn" data-filter="set3">Bộ 3: Vi Phạm Quy Định</button>
+                            <button class="filter-btn" data-filter="set4">Bộ 4: Hậu Quả Thật</button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="benchmark-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Nhóm Phân Loại</th>
+                                    <th>Câu Hỏi Test</th>
+                                    <th>Trạng Thái Bot</th>
+                                    <th>Confidence</th>
+                                    <th>Kết Quả</th>
+                                </tr>
+                            </thead>
+                            <tbody id="benchmark-table-body">
+                                <tr><td colspan="6" class="text-center">Đang nạp bộ dữ liệu Golden Set...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: QUALITY BAR & GAP ANALYSIS -->
+            <section id="tab-quality" class="tab-content">
+                <div class="quality-layout">
+                    <div class="glass-card quality-commitment-card">
+                        <h3><i class="fa-solid fa-bullseye"></i> 1. Tuyên Bố Cam Kết Chuẩn Đạt (Quality Bar)</h3>
+                        <div class="commitment-banner">
+                            <div class="banner-part">
+                                <span class="part-num">Phần 1</span>
+                                <div class="part-text">Con Số Tổng Thể: <strong>≥ 80.0%</strong> câu thử đạt trên toàn bộ Golden Set (34 câu).</div>
+                            </div>
+                            <div class="banner-part danger">
+                                <span class="part-num">Phần 2</span>
+                                <div class="part-text">Ranh Giới Zero-Tolerance: <strong>KHÔNG ĐƯỢC TRẢ LỜI SAI DEADLINE NỘP BÀI DÙ CHỈ MỘT LẦN (0% LỖI DEADLINE)</strong>.</div>
+                            </div>
+                        </div>
+
+                        <div class="rationale-box">
+                            <h4><i class="fa-solid fa-triangle-exclamation"></i> Vì sao có quy tắc Zero-Tolerance đối với Deadline?</h4>
+                            <p>Khi học viên hỏi deadline, nếu Bot tự tin trả lời sai mốc thời gian (lấy nhầm thông báo cũ ngày 28/07 thay vì mốc cập nhật 30/07), học viên sẽ tin tưởng tuyệt đối và nộp muộn bài, dẫn đến bị tính 0 điểm hoặc bị loại khỏi Hackathon mà người dùng không thể tự phát hiện trước khi quá muộn. Do đó: <strong>Sai 1 deadline = Thất bại hoàn toàn của sản phẩm.</strong></p>
+                        </div>
+                    </div>
+
+                    <div class="glass-card gap-analysis-card">
+                        <h3><i class="fa-solid fa-chart-line"></i> 2. Phân Tích Khoảng Cách Gap Analysis (-0.6%) Chuẩn Bị Slide Demo</h3>
+                        <div class="gap-grid">
+                            <div class="gap-item">
+                                <div class="gap-icon"><i class="fa-solid fa-font"></i></div>
+                                <div class="gap-info">
+                                    <h5>Từ Viết Tắt Nội Bộ (`OD`)</h5>
+                                    <p>Chưa có từ điển `OD` -> *Operational Document* trong Entity Extractor làm điểm matching score của câu 9 & 24 rớt xuống 0.05.</p>
+                                </div>
+                            </div>
+                            <div class="gap-item">
+                                <div class="gap-icon"><i class="fa-solid fa-align-left"></i></div>
+                                <div class="gap-info">
+                                    <h5>Query Phàn Nàn Quá Dài</h5>
+                                    <p>Các câu phàn nàn dài trích khảo sát chứa nhiều từ nhiễu làm loãng mật độ keyword matching.</p>
+                                </div>
+                            </div>
+                            <div class="gap-item">
+                                <div class="gap-icon"><i class="fa-solid fa-shield-virus"></i></div>
+                                <div class="gap-info">
+                                    <h5>Ngưỡng PAIR Guardrail 60.0</h5>
+                                    <p>Cơ chế bảo vệ dừng lại ở 55/100 điểm cho các câu hỏi ghép 2 ý để tránh bot đoán mò thiếu căn cứ.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Script Application -->
+    <script src="app.js"></script>
+</body>
+</html>
