@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verified Discord Navigator — Trợ Lý AI Khóa Học VLearn</title>
     
-    <!-- Google Fonts: Inter & Outfit -->
+    <!-- Google Fonts: Inter & Outfit & Fira Code -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@500;600&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -84,17 +84,14 @@
                             <!-- Scenario Quick Chips -->
                             <div class="scenario-chips">
                                 <span class="chip-label">Scenario Mẫu:</span>
+                                <button class="chip-btn" data-query="XP để làm gì?">
+                                    <i class="fa-solid fa-star"></i> XP để làm gì? (Tri thức)
+                                </button>
+                                <button class="chip-btn" data-query="hôm nay phải làm gì">
+                                    <i class="fa-solid fa-calendar-day"></i> Hôm nay làm gì (Schedule)
+                                </button>
                                 <button class="chip-btn" data-query="Khóa 4 nộp Gate 1 khi nào?">
                                     <i class="fa-solid fa-bolt"></i> Deadline Gate 1 K4 (Conflict)
-                                </button>
-                                <button class="chip-btn" data-query="Workshop tối nay lúc mấy giờ?">
-                                    <i class="fa-solid fa-clock"></i> Workshop Tối Nay
-                                </button>
-                                <button class="chip-btn" data-query="nộp OD ở đâu b">
-                                    <i class="fa-solid fa-file-arrow-up"></i> nộp OD ở đâu (Lỗi chính tả)
-                                </button>
-                                <button class="chip-btn" data-query="Cho xin đáp án bộ câu hỏi trắc nghiệm Gate 1">
-                                    <i class="fa-solid fa-ban"></i> Xin Đáp Án (Vi phạm)
                                 </button>
                                 <button class="chip-btn" data-query="Khoá học có tổ chức buổi Offline tại Hà Nội không bot?">
                                     <i class="fa-solid fa-ghost"></i> Sự Kiện Offline (No Info)
@@ -103,7 +100,7 @@
 
                             <form id="query-form" class="query-form">
                                 <div class="input-wrapper">
-                                    <input type="text" id="user-query-input" placeholder="Nhập thắc mắc logistics, deadline, link nộp bài..." required>
+                                    <input type="text" id="user-query-input" placeholder="Nhập thắc mắc logistics, deadline, link nộp bài, XP..." required>
                                     <button type="submit" id="btn-submit-query" class="btn-primary">
                                         <i class="fa-solid fa-paper-plane"></i> Gửi Bot
                                     </button>
@@ -201,9 +198,9 @@
 
                         <!-- Rejected Sources Analysis -->
                         <div class="glass-card rejected-sources-card">
-                            <h3><i class="fa-solid fa-filter-circle-xmark"></i> Các Nguồn Đã Bị Loại & Lý Do</h3>
+                            <h3><i class="fa-solid fa-filter-circle-xmark"></i> Trạng Thái Nguồn Dư Thừa / Mâu Thuẫn</h3>
                             <div class="rejected-list" id="rejected-list-box">
-                                <div class="empty-state">Chưa có nguồn bị loại</div>
+                                <div class="empty-state">Chưa có dữ liệu lọc</div>
                             </div>
                         </div>
                     </div>
@@ -363,6 +360,24 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Modal Dialog for Score Breakdown -->
+    <div class="modal-overlay" id="score-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-calculator"></i> Chi Tiết 8-Factor Score Breakdown</h3>
+                <button class="modal-close" id="modal-close-btn">&times;</button>
+            </div>
+            <div class="score-breakdown-list" id="modal-score-list">
+                <div class="score-row"><span class="name">Authority Score</span><span class="val">40.0</span></div>
+                <div class="score-row"><span class="name">Cohort Match Score</span><span class="val">25.0</span></div>
+                <div class="score-row"><span class="name">Topic Match Score</span><span class="val">20.0</span></div>
+                <div class="score-row"><span class="name">Date Match Score</span><span class="val">15.0</span></div>
+                <div class="score-row"><span class="name">Freshness Score</span><span class="val">15.0</span></div>
+                <div class="score-row"><span class="name">Active Status Score</span><span class="val">20.0</span></div>
+            </div>
+        </div>
     </div>
 
     <!-- Script Application -->

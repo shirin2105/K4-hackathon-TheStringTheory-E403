@@ -38,6 +38,51 @@ document.addEventListener('DOMContentLoaded', () => {
         if (queryText) submitQuery(queryText);
     });
 
+    let currentResponseData = null;
+
+    // --- MODAL SCORE BREAKDOWN HANDLERS ---
+    const scoreModal = document.getElementById('score-modal');
+    const modalCloseBtn = document.getElementById('modal-close-btn');
+    const btnViewScore = document.getElementById('btn-view-score');
+    const btnViewSource = document.getElementById('btn-view-source');
+
+    if (btnViewScore) {
+        btnViewScore.addEventListener('click', () => {
+            if (!currentResponseData || !currentResponseData.verification_details) return;
+            const bd = currentResponseData.verification_details.score_breakdown || {};
+            const container = document.getElementById('modal-score-list');
+            
+            let html = '';
+            for (const [k, v] of Object.entries(bd)) {
+                const label = k.replace(/_/g, ' ').toUpperCase();
+                const formattedVal = (v >= 0 ? `+${v.toFixed(1)}` : `${v.toFixed(1)}`);
+                html += `<div class="score-row"><span class="name">${label}</span><span class="val">${formattedVal}</span></div>`;
+            }
+            html += `<div class="score-row" style="border-top:1px solid rgba(255,255,255,0.1); margin-top:8px; padding-top:10px;"><span class="name" style="font-weight:700; color:#fff;">TỔNG ĐIỂM SCORE</span><span class="val" style="color:var(--primary); font-size:16px;">${currentResponseData.verification_details.total_score || 0}</span></div>`;
+            
+            container.innerHTML = html;
+            scoreModal.classList.add('active');
+        });
+    }
+
+    if (modalCloseBtn) {
+        modalCloseBtn.addEventListener('click', () => scoreModal.classList.remove('active'));
+    }
+    if (scoreModal) {
+        scoreModal.addEventListener('click', (e) => {
+            if (e.target === scoreModal) scoreModal.classList.remove('active');
+        });
+    }
+
+    if (btnViewSource) {
+        btnViewSource.addEventListener('click', () => {
+            if (currentResponseData && currentResponseData.selected_source) {
+                const src = currentResponseData.selected_source;
+                alert(`Nguồn chính thức chọn:\nID: ${src.id}\nKênh: ${src.channel_name}\nNgười đăng: ${src.author_name}\nNội dung: ${src.content}`);
+            }
+        });
+    }
+
     // --- SUBMIT QUERY TO BOT ENGINE ---
     async function submitQuery(question) {
         const statusBadge = document.getElementById('embed-status-badge');
@@ -66,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const data = await resp.json();
+            currentResponseData = data;
             
             // Step 2 & 3
             highlightPipelineStep(2, "Đã truy xuất candidates từ official channels");
@@ -110,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('btn-view-score').disabled = false;
             }
 
-            // Render Rejected Sources (Ultra-Clean UI: show clean state when verified)
+            // Render Rejected Sources
             if (data.status === 'INSUFFICIENT_EVIDENCE' && data.rejected_sources && data.rejected_sources.length > 0) {
                 rejectedBox.innerHTML = data.rejected_sources.map(r => `
                     <div class="rejected-item">
